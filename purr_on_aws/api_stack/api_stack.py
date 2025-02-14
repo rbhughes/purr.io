@@ -15,6 +15,7 @@ class ApiStack(Stack):
     def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
+        purr_domain = self.node.try_get_context("purr_domain")
         purr_subdomain = self.node.try_get_context("purr_subdomain")
         purr_dynamodb_table_name = f"{purr_subdomain}-table-{self.account}"
         purr_api_lambda_name = f"{purr_subdomain}-api-lambda-{self.account}"
@@ -70,7 +71,11 @@ class ApiStack(Stack):
             runtime=_lambda.Runtime.PYTHON_3_9,
             code=_lambda.Code.from_asset("lambda"),
             handler="dynamodb_handler.handler",
-            environment={"TABLE_NAME": table.table_name},
+            environment={
+                "TABLE_NAME": table.table_name,
+                "PURR_SUBDOMAIN": purr_subdomain,
+                "PURR_DOMAIN": purr_domain,
+            },
             function_name=purr_api_lambda_name,
         )
 
@@ -93,37 +98,80 @@ class ApiStack(Stack):
         api_handler.add_to_role_policy(dynamodb_policy)
         api_handler.add_to_role_policy(logging_policy)
 
-        # Create API Gateway
+        # Create API Gateway with safe CORS
         api = apigw.RestApi(
             self,
             "FizzApi",
             rest_api_name="Fizz API",
             description="API for fizzy operations",
             default_cors_preflight_options=apigw.CorsOptions(
-                allow_origins=apigw.Cors.ALL_ORIGINS,
+                allow_origins=[
+                    "http://localhost:3000",
+                    f"https://{purr_subdomain}.{purr_domain}",
+                ],
                 allow_methods=apigw.Cors.ALL_METHODS,
+                allow_headers=[
+                    "Content-Type",
+                    "Authorization",
+                    "token",
+                ],
+                max_age=Duration.minutes(5),
+                status_code=200,
             ),
         )
 
+        # api = apigw.RestApi(
+        #     self,
+        #     "FizzApi",
+        #     rest_api_name="Fizz API",
+        #     description="API for fizzy operations",
+        #     default_cors_preflight_options=apigw.CorsOptions(
+        #         allow_origins=apigw.Cors.ALL_ORIGINS,
+        #         allow_methods=apigw.Cors.ALL_METHODS,
+        #     ),
+        # )
+
         # Don't forget to glue the lambda to the gateway
-        integration = apigw.LambdaIntegration(api_handler)
+        # integration = apigw.LambdaIntegration(api_handler)
+        integration = apigw.LambdaIntegration(
+            api_handler,
+            proxy=True,
+            integration_responses=[
+                {
+                    "statusCode": "200",
+                    "responseParameters": {
+                        "method.response.header.Access-Control-Allow-Origin": "'*'"
+                    },
+                }
+            ],
+        )
 
         # Add resources and methods for all resourcd endpoints
         resources = ["repos", "rasters", "vectors"]
 
+        method_response = {
+            "statusCode": "200",
+            "responseParameters": {
+                "method.response.header.Access-Control-Allow-Origin": True
+            },
+        }
+
         for resource in resources:
             api_resource = api.root.add_resource(resource)
+
             api_resource.add_method(
                 "GET",
                 integration=integration,
                 authorizer=authorizer,
                 authorization_type=apigw.AuthorizationType.CUSTOM,
+                method_responses=[method_response],
             )
             api_resource.add_method(
                 "POST",
                 integration=integration,
                 authorizer=authorizer,
                 authorization_type=apigw.AuthorizationType.CUSTOM,
+                method_responses=[method_response],
             )
 
         CfnOutput(self, "ApiUrl", value=api.url, description="API endpoint root URL")
