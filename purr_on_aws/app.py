@@ -1,27 +1,23 @@
 # #!/usr/bin/env python3
 
+import os
+from dotenv import load_dotenv
 from aws_cdk import App, Environment
 from site_stack.site_stack import SiteStack
 from api_stack.api_stack import ApiStack
 
-cdk_env = Environment(account="434980069942", region="us-east-2")
+load_dotenv()
 
-###
-# prerequisites:
-#    1. ~/.aws/credentials exit for IAM admin for this subdomain [lord_purrio]
-#    2. cdk bootstrap for this subdomain
-#    3. react dist in site_stack is defined
-#    4. cdk.json has purr_domain and purr_cert_arn defined
-#
-# To deploy all stacks...
-# cdk deploy SiteStack --context purr_subdomain=skunk
-# cdk deploy ApiStack --context purr_subdomain=skunk
-# python3 api_stack/add_indexes.py
+aws_account = os.getenv("AWS_ACCOUNT")
+aws_region = os.getenv("AWS_REGION")
+purr_subdomain = os.getenv("PURR_SUBDOMAIN")
+
+cdk_env = Environment(account=aws_account, region=aws_region)
 
 
 app = App()
 
-purr_subdomain = app.node.try_get_context("purr_subdomain")
+# purr_subdomain = app.node.try_get_context("purr_subdomain")
 
 SiteStack(
     app,

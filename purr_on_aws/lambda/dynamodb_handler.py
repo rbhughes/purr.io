@@ -10,12 +10,6 @@ table = dynamodb.Table(os.environ["TABLE_NAME"])
 purr_subdomain = dynamodb.Table(os.environ["PURR_SUBDOMAIN"])
 purr_domain = dynamodb.Table(os.environ["PURR_DOMAIN"])
 
-# CORS configuration
-# CORS_HEADERS = {
-#     "Access-Control-Allow-Origin": "http://localhost:3000",
-#     "Access-Control-Allow-Headers": "Content-Type,Authorization,X-Api-Key,token",
-#     "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
-# }
 
 ALLOWED_ORIGINS = {"http://localhost:3000", f"https://{purr_subdomain}.{purr_domain}"}
 
@@ -44,14 +38,6 @@ def create_response(event, status_code, body, extra_headers=None):
 
     cors_origin = request_origin if request_origin in ALLOWED_ORIGINS else ""
 
-    print("XXXXXXXXXXXXXXXXXXXXXXX")
-    print(request_origin)
-    print("xxxxxxxxxxxxxxxxxxxxxxx")
-    print(ALLOWED_ORIGINS)
-    print("XXXXXXXXXXXXXXXXXXXXXXX")
-    print(cors_origin)
-
-    # headers = {"Content-Type": "application/json", **CORS_HEADERS}
     headers = {
         "Content-Type": "application/json",
         "Access-Control-Allow-Origin": cors_origin,

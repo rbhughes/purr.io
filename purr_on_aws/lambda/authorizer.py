@@ -4,8 +4,6 @@ import re
 
 def handler(event, context):
     try:
-        # print("Received event:", json.dumps(event))
-
         token = event.get("authorizationToken")
         print("Authorization Token:", token)
 
@@ -26,7 +24,6 @@ def handler(event, context):
 def validate_token(token):
     """
     Validate the token.
-    Replace this with your actual token validation logic.
     """
     if not token:
         print("No token provided")
