@@ -1,10 +1,17 @@
 import boto3
+import os
+from dotenv import load_dotenv
 from botocore.exceptions import ClientError
+
+load_dotenv()
+
+aws_account = os.getenv("AWS_ACCOUNT")
+purr_subdomain = os.getenv("PURR_SUBDOMAIN")
 
 
 def add_dynamodb_indexes():
     gsi_data = {
-        "table": "ghost-table-434980069942",
+        "table": f"{purr_subdomain}-table-{aws_account}",
         "indices": [
             ("pk", "uwi"),
             ("pk", "state"),

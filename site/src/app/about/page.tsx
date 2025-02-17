@@ -1,20 +1,23 @@
-// app/about/page.tsx
-//import Link from 'next/link'
+import Experience from "@/components/sections/experience";
+import Skills from "@/components/sections/skills";
 
-export default function AboutPage() {
+export default function About() {
   return (
-    <main>
-      <h1 style={{ fontSize: "2rem", marginBottom: "1rem" }}>About Us</h1>
-      <p style={{ lineHeight: 1.6 }}>
-        Learn more about our company and mission.
-      </p>
-      <p>
-        Lovely. We can hide stuff in the <code>&lt;details</code>&gt; element:
-      </p>
-      <details>
-        <summary>A short summary of the contents</summary>
-        <p>Hidden gems.</p>
-      </details>
-    </main>
+    <div className="font-base">
+      <h1 className="mb-8 text-2xl font-heading sm:text-4xl">About</h1>
+
+      <div className="mb-10 text-base sm:text-lg">
+        <p>
+          Lorem ipsum dolor sit amet consectetur, adipisicing elit. Est
+          consequatur, harum pariatur provident rerum placeat magni voluptas
+          consectetur in exercitationem nobis aut, molestiae iure possimus
+          aspernatur nesciunt laudantium ab atque.
+        </p>
+      </div>
+
+      <Skills />
+
+      <Experience />
+    </div>
   );
 }

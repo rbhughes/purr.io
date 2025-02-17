@@ -1,3 +1,5 @@
+import os
+from dotenv import load_dotenv
 from aws_cdk import (
     Stack,
     aws_s3 as s3,
@@ -12,17 +14,20 @@ from aws_cdk import (
 )
 from constructs import Construct
 
+load_dotenv()
+
+purr_domain = os.getenv("PURR_DOMAIN")
+purr_subdomain = os.getenv("PURR_SUBDOMAIN")
+purr_cert_arn = os.getenv("PURR_CERT_ARN")
+aws_account = os.getenv("AWS_ACCOUNT")
+purr_site_bucket_name = f"{purr_subdomain}-site-{aws_account}"
+
 
 class SiteStack(Stack):
     def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
-        purr_domain = self.node.try_get_context("purr_domain")
-        purr_subdomain = self.node.try_get_context("purr_subdomain")
-        purr_cert_arn = self.node.try_get_context("purr_cert_arn")
-        purr_site_bucket_name = f"{purr_subdomain}-site-{self.account}"
-
-        purr_local_dist = "/Users/bryan/dev/purr.io/site/dist"
+        purr_local_dist = "../site/dist"
 
         ###
         # NOTE: assumes you already have a valid certificate

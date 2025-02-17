@@ -15,8 +15,6 @@
     ]
   },
   "context": {
-    "purr_domain": "purr.io",
-    "purr_cert_arn": "arn:aws:acm:us-east-1:434980069942:certificate/91bf9eba-f462-47a8-9758-5bc17e2b7ddc",
     "@aws-cdk/aws-lambda:recognizeLayerVersion": true,
     "@aws-cdk/core:checkSecretUsage": true,
     "@aws-cdk/core:target-partitions": [

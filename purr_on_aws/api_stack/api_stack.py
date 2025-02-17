@@ -1,3 +1,5 @@
+import os
+from dotenv import load_dotenv
 from aws_cdk import (
     Duration,
     Stack,
@@ -10,15 +12,18 @@ from aws_cdk import (
 )
 from constructs import Construct
 
+load_dotenv()
+
+purr_domain = os.getenv("PURR_DOMAIN")
+purr_subdomain = os.getenv("PURR_SUBDOMAIN")
+aws_account = os.getenv("AWS_ACCOUNT")
+purr_dynamodb_table_name = f"{purr_subdomain}-table-{aws_account}"
+purr_api_lambda_name = f"{purr_subdomain}-api-lambda-{aws_account}"
+
 
 class ApiStack(Stack):
     def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
-
-        purr_domain = self.node.try_get_context("purr_domain")
-        purr_subdomain = self.node.try_get_context("purr_subdomain")
-        purr_dynamodb_table_name = f"{purr_subdomain}-table-{self.account}"
-        purr_api_lambda_name = f"{purr_subdomain}-api-lambda-{self.account}"
 
         # Create Lambda authorizer function
         auth_handler = _lambda.Function(
@@ -43,6 +48,7 @@ class ApiStack(Stack):
 
         auth_handler.add_to_role_policy(logging_policy)
 
+        # Set auth_handler lambda as authorizer for API
         authorizer = apigw.TokenAuthorizer(
             self,
             "ApiAuthorizer",
@@ -94,7 +100,7 @@ class ApiStack(Stack):
             resources=[table.table_arn],
         )
 
-        # The api_handler can log and do all DynamoDB stuff
+        # Ensure that api_handler can do logging, DynamoDB stuff
         api_handler.add_to_role_policy(dynamodb_policy)
         api_handler.add_to_role_policy(logging_policy)
 
@@ -120,19 +126,7 @@ class ApiStack(Stack):
             ),
         )
 
-        # api = apigw.RestApi(
-        #     self,
-        #     "FizzApi",
-        #     rest_api_name="Fizz API",
-        #     description="API for fizzy operations",
-        #     default_cors_preflight_options=apigw.CorsOptions(
-        #         allow_origins=apigw.Cors.ALL_ORIGINS,
-        #         allow_methods=apigw.Cors.ALL_METHODS,
-        #     ),
-        # )
-
-        # Don't forget to glue the lambda to the gateway
-        # integration = apigw.LambdaIntegration(api_handler)
+        # Set lambda handler for API Gateway (proxy=True for CORS)
         integration = apigw.LambdaIntegration(
             api_handler,
             proxy=True,
@@ -146,7 +140,7 @@ class ApiStack(Stack):
             ],
         )
 
-        # Add resources and methods for all resourcd endpoints
+        # Add resources and methods for all resource endpoints
         resources = ["repos", "rasters", "vectors"]
 
         method_response = {
@@ -174,7 +168,14 @@ class ApiStack(Stack):
                 method_responses=[method_response],
             )
 
-        CfnOutput(self, "ApiUrl", value=api.url, description="API endpoint root URL")
+        ######################################################################
+
+        CfnOutput(
+            self,
+            "ApiUrl",
+            value=api.url,
+            description="API endpoint root URL",
+        )
         CfnOutput(
             self,
             "TableName",
