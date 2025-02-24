@@ -64,15 +64,51 @@ def handler(event, context):
         resource_path = event["path"].split("/")
         resource_type = resource_path[-1].lower().rstrip("s")  # Normalize to singular
 
-        valid_resources = {"repo", "raster", "vector"}
+        valid_resources = {"repo", "raster", "vector", "search"}
         if resource_type not in valid_resources:
             return create_response(event, 400, {"error": "Invalid resource type"})
 
         if http_method == "POST":
             try:
-                items = json.loads(event["body"])
+                body = json.loads(event["body"])
             except json.JSONDecodeError:
                 return create_response(event, 400, {"error": "Invalid JSON format"})
+
+            print("bodybodybodybody")
+            print(body)
+            print("bodybodybodybody")
+
+            if resource_type == "search":
+                prefixes = body.get("uwis", [])
+                all_items = []
+
+                for prefix in prefixes:
+                    # Query for each prefix
+                    response = table.query(
+                        IndexName="pk-uwi-index",  # Name of your GSI
+                        KeyConditionExpression=Key("pk").eq("RASTER")
+                        & Key("uwi").begins_with(prefix),
+                    )
+                    all_items.extend(response.get("Items", []))
+
+                    # Handle pagination (if results exceed 1MB)
+                    while "LastEvaluatedKey" in response:
+                        response = table.query(
+                            IndexName="pk-uwi-index",
+                            KeyConditionExpression=Key("pk").eq("RASTER")
+                            & Key("uwi").begins_with(prefix),
+                            ExclusiveStartKey=response["LastEvaluatedKey"],
+                        )
+                        all_items.extend(response.get("Items", []))
+
+                # return create_response(
+                #     event, 400, {"error": "FAKE FAKE CHECK LOGS"}
+                # )
+                print("responserrrrrrrrrrr]")
+                print(response)
+                print("responserrrrrrrrrrr]")
+
+                return create_response(event, 200, {"data": response})
 
             if not isinstance(items, list):
                 return create_response(
@@ -110,7 +146,8 @@ def handler(event, context):
                     },
                 )
 
-            return create_response(event, 200, {"data": response["Items"]})
+            # return create_response(event, 200, {"data": response["Items"]})
+            return create_response(event, 200, response["Items"])
 
         return create_response(event, 405, {"error": "Method not allowed"})
 

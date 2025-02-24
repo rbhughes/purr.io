@@ -37,7 +37,8 @@ export default function RootLayout({
         <body className={purr_font.className}>
           <ThemeProvider attribute="class" disableTransitionOnChange>
             <Nav />
-            <div className="text-text dark:text-darkText mx-auto w-[750px] max-w-full px-5 pb-10 pt-28">
+            {/* <div className="text-text dark:text-darkText mx-auto w-[1400px] max-w-full px-5 pb-10 pt-28"> */}
+            <div className="text-text dark:text-darkText mx-auto w-[80%] max-w-full px-5 pb-10 pt-28">
               {children}
             </div>
           </ThemeProvider>
