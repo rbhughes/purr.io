@@ -85,8 +85,7 @@ class ApiStack(Stack):
             function_name=purr_api_lambda_name,
         )
 
-        # Permit DynamoDB (and GSI) access
-        # NOTE that index names should match add_indexes.py
+        # Permit DynamoDB access
         dynamodb_policy = iam.PolicyStatement(
             actions=[
                 "dynamodb:GetItem",
@@ -98,11 +97,7 @@ class ApiStack(Stack):
                 "dynamodb:BatchGetItem",
                 "dynamodb:BatchWriteItem",
             ],
-            resources=[
-                table.table_arn,
-                f"{table.table_arn}/index/pk-uwi-index",
-                f"{table.table_arn}/index/pk-calib-index",
-            ],
+            resources=[table.table_arn],
         )
 
         # Ensure that api_handler can do logging, DynamoDB stuff
@@ -146,7 +141,7 @@ class ApiStack(Stack):
         )
 
         # Add resources and methods for all resource endpoints
-        resources = ["repos", "rasters", "vectors", "search"]
+        resources = ["repos", "rasters", "vectors"]
 
         method_response = {
             "statusCode": "200",
@@ -158,14 +153,13 @@ class ApiStack(Stack):
         for resource in resources:
             api_resource = api.root.add_resource(resource)
 
-            if resource != "search":
-                api_resource.add_method(
-                    "GET",
-                    integration=integration,
-                    authorizer=authorizer,
-                    authorization_type=apigw.AuthorizationType.CUSTOM,
-                    method_responses=[method_response],
-                )
+            api_resource.add_method(
+                "GET",
+                integration=integration,
+                authorizer=authorizer,
+                authorization_type=apigw.AuthorizationType.CUSTOM,
+                method_responses=[method_response],
+            )
             api_resource.add_method(
                 "POST",
                 integration=integration,
