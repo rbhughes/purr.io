@@ -1,8 +1,9 @@
 import json
 import boto3
 import os
+import base64
 from decimal import Decimal
-from datetime import datetime, timezone
+from datetime import datetime
 from boto3.dynamodb.conditions import Key
 
 dynamodb = boto3.resource("dynamodb")
@@ -62,7 +63,7 @@ def handler(event, context):
     try:
         http_method = event["httpMethod"]
         resource_path = event["path"].split("/")
-        resource_type = resource_path[-1].lower().rstrip("s")  # Normalize to singular
+        resource_type = resource_path[-1].lower().rstrip("s")
 
         valid_resources = {"repo", "raster", "vector", "search"}
         if resource_type not in valid_resources:
@@ -74,66 +75,89 @@ def handler(event, context):
             except json.JSONDecodeError:
                 return create_response(event, 400, {"error": "Invalid JSON format"})
 
-            print("bodybodybodybody")
-            print(body)
-            print("bodybodybodybody")
+            # simple body
+            # {'resource': 'rasters', 'uwis': ['05009060720000'], 'curves': []}
 
             if resource_type == "search":
-                prefixes = body.get("uwis", [])
-                all_items = []
-
-                for prefix in prefixes:
-                    # Query for each prefix
-                    response = table.query(
-                        IndexName="pk-uwi-index",  # Name of your GSI
-                        KeyConditionExpression=Key("pk").eq("RASTER")
-                        & Key("uwi").begins_with(prefix),
+                # pagination parameters
+                MAX = 500
+                max_results = min(int(body.get("maxResults", 100)), MAX)
+                pagination_token = (
+                    json.loads(
+                        base64.b64decode(body.get("paginationToken", "")).decode()
                     )
-                    all_items.extend(response.get("Items", []))
-
-                    # Handle pagination (if results exceed 1MB)
-                    while "LastEvaluatedKey" in response:
-                        response = table.query(
-                            IndexName="pk-uwi-index",
-                            KeyConditionExpression=Key("pk").eq("RASTER")
-                            & Key("uwi").begins_with(prefix),
-                            ExclusiveStartKey=response["LastEvaluatedKey"],
-                        )
-                        all_items.extend(response.get("Items", []))
-
-                # return create_response(
-                #     event, 400, {"error": "FAKE FAKE CHECK LOGS"}
-                # )
-                print("responserrrrrrrrrrr]")
-                print(response)
-                print("responserrrrrrrrrrr]")
-
-                return create_response(event, 200, {"data": response})
-
-            if not isinstance(items, list):
-                return create_response(
-                    event, 400, {"error": "Request body must be an array"}
+                    if body.get("paginationToken")
+                    else None
                 )
 
-            with table.batch_writer() as batch:
-                for item in items:
-                    now = datetime.now(timezone.utc).isoformat()
-                    processed_item = DecimalEncoder.prepare_for_dynamodb(
-                        {**item, "created_at": now, "updated_at": now}
-                    )
-                    batch.put_item(Item=processed_item)
+                # PAGINATION FIX: Maintain original prefix list across requests
+                if pagination_token:
+                    prefixes = pagination_token.get("prefixes", [])
+                    current_prefix_idx = pagination_token.get("prefix_idx", 0)
+                    last_evaluated_key = pagination_token.get("last_evaluated_key")
+                else:
+                    prefixes = body.get("uwis", [])
+                    current_prefix_idx = 0
+                    last_evaluated_key = None
 
-            return create_response(
-                event,
-                201,
-                {
-                    "message": f"Successfully created {len(items)} {resource_type}(s)",
-                    "resource_type": resource_type,
-                    "count": len(items),
-                },
-            )
+                accumulated = []
+                remaining = max_results
+
+                while remaining > 0 and current_prefix_idx < len(prefixes):
+                    prefix = prefixes[current_prefix_idx]
+                    query_args = {
+                        "IndexName": "pk-uwi-index",
+                        "KeyConditionExpression": Key("pk").eq("RASTER")
+                        & Key("uwi").begins_with(prefix),
+                        "Limit": min(remaining, 100),
+                    }
+
+                    if last_evaluated_key:
+                        query_args["ExclusiveStartKey"] = last_evaluated_key
+
+                    response = table.query(**query_args)
+                    batch_items = response.get("Items", [])
+                    accumulated.extend(batch_items)
+                    remaining -= len(batch_items)
+                    last_evaluated_key = response.get("LastEvaluatedKey")
+
+                    if last_evaluated_key:
+                        break  # preserve state if more items exist
+                    else:
+                        current_prefix_idx += 1  # Move to next prefix
+                        last_evaluated_key = None
+
+                # Build next token with original prefixes
+                new_token = None
+                if (last_evaluated_key and remaining > 0) or current_prefix_idx < len(
+                    prefixes
+                ):
+                    new_token = {
+                        "prefixes": prefixes,
+                        "prefix_idx": current_prefix_idx,
+                        "last_evaluated_key": last_evaluated_key,
+                    }
+
+                metadata = {
+                    "returnedCount": len(accumulated),
+                    "totalRequested": max_results,
+                    "paginationToken": base64.b64encode(
+                        json.dumps(new_token).encode()
+                    ).decode()
+                    if new_token
+                    else None,
+                    "generatedAt": datetime.now().isoformat(),
+                }
+                print("______metadata_____")
+                print(metadata)
+                print("___________________")
+
+                return create_response(
+                    event, 200, {"data": accumulated, "metadata": metadata}
+                )
 
         elif http_method == "GET":
+            # Existing GET handling remains unchanged
             if resource_type == "repo":
                 response = table.query(KeyConditionExpression=Key("pk").eq("REPO"))
             elif resource_type == "raster":
@@ -145,8 +169,6 @@ def handler(event, context):
                         ":resource_prefix": f"{resource_type.upper()}#"
                     },
                 )
-
-            # return create_response(event, 200, {"data": response["Items"]})
             return create_response(event, 200, response["Items"])
 
         return create_response(event, 405, {"error": "Method not allowed"})
