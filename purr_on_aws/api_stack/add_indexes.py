@@ -87,7 +87,7 @@ def add_dynamodb_indexes():
         "table": f"{purr_subdomain}-table-{aws_account}",
         "indices": [
             ("pk", "uwi", "pk-uwi-index"),
-            ("pk", "calib_log_description_lc", "pk-calib-index"),
+            # ("pk", "calib_log_description_lc", "pk-calib-index"),
         ],
     }
 
