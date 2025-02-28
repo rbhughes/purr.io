@@ -3,7 +3,7 @@ import boto3
 import os
 import base64
 from decimal import Decimal
-from datetime import datetime
+from datetime import datetime, timezone
 from boto3.dynamodb.conditions import Key
 
 dynamodb = boto3.resource("dynamodb")
@@ -75,11 +75,8 @@ def handler(event, context):
             except json.JSONDecodeError:
                 return create_response(event, 400, {"error": "Invalid JSON format"})
 
-            # simple body
-            # {'resource': 'rasters', 'uwis': ['05009060720000'], 'curves': []}
-
+            ###
             if resource_type == "search":
-                # pagination parameters
                 MAX = 500
                 max_results = min(int(body.get("maxResults", 100)), MAX)
                 pagination_token = (
@@ -90,7 +87,6 @@ def handler(event, context):
                     else None
                 )
 
-                # PAGINATION FIX: Maintain original prefix list across requests
                 if pagination_token:
                     prefixes = pagination_token.get("prefixes", [])
                     current_prefix_idx = pagination_token.get("prefix_idx", 0)
@@ -99,6 +95,8 @@ def handler(event, context):
                     prefixes = body.get("uwis", [])
                     current_prefix_idx = 0
                     last_evaluated_key = None
+
+                curve = body.get("curve")
 
                 accumulated = []
                 remaining = max_results
@@ -111,6 +109,17 @@ def handler(event, context):
                         & Key("uwi").begins_with(prefix),
                         "Limit": min(remaining, 100),
                     }
+
+                    # Add FilterExpression if curve is provided
+                    if curve:
+                        query_args[
+                            "FilterExpression"
+                        ] = """contains(calib_log_description_lc, :curve) or 
+                            contains(calib_file_name_lc, :curve) or 
+                            contains(calib_log_type_lc, :curve)"""
+                        query_args["ExpressionAttributeValues"] = {
+                            ":curve": curve.lower()
+                        }
 
                     if last_evaluated_key:
                         query_args["ExclusiveStartKey"] = last_evaluated_key
@@ -148,16 +157,37 @@ def handler(event, context):
                     else None,
                     "generatedAt": datetime.now().isoformat(),
                 }
-                print("______metadata_____")
-                print(metadata)
-                print("___________________")
-
                 return create_response(
                     event, 200, {"data": accumulated, "metadata": metadata}
                 )
 
+            else:
+                if not isinstance(body, list):
+                    return create_response(
+                        event, 400, {"error": "Request body must be an array"}
+                    )
+
+                with table.batch_writer() as batch:
+                    for item in body:
+                        now = datetime.now(timezone.utc).isoformat()
+                        processed_item = DecimalEncoder.prepare_for_dynamodb(
+                            {**item, "created_at": now, "updated_at": now}
+                        )
+                        batch.put_item(Item=processed_item)
+
+                return create_response(
+                    event,
+                    201,
+                    {
+                        "message": f"Successfully created {len(body)} {resource_type}(s)",
+                        "resource_type": resource_type,
+                        "count": len(body),
+                    },
+                )
+
+        ###
+
         elif http_method == "GET":
-            # Existing GET handling remains unchanged
             if resource_type == "repo":
                 response = table.query(KeyConditionExpression=Key("pk").eq("REPO"))
             elif resource_type == "raster":
