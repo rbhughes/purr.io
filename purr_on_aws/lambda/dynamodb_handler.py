@@ -11,7 +11,6 @@ table = dynamodb.Table(os.environ["TABLE_NAME"])
 purr_subdomain = dynamodb.Table(os.environ["PURR_SUBDOMAIN"])
 purr_domain = dynamodb.Table(os.environ["PURR_DOMAIN"])
 
-
 ALLOWED_ORIGINS = {"http://localhost:3000", f"https://{purr_subdomain}.{purr_domain}"}
 
 
@@ -33,10 +32,7 @@ class DecimalEncoder(json.JSONEncoder):
 
 
 def create_response(event, status_code, body, extra_headers=None):
-    """Helper function to create standardized responses with CORS headers"""
-
     request_origin = event["headers"].get("origin", "")
-
     cors_origin = request_origin if request_origin in ALLOWED_ORIGINS else ""
 
     headers = {
@@ -75,7 +71,6 @@ def handler(event, context):
             except json.JSONDecodeError:
                 return create_response(event, 400, {"error": "Invalid JSON format"})
 
-            ###
             if resource_type == "search":
                 MAX = 500
                 max_results = min(int(body.get("maxResults", 100)), MAX)
@@ -97,26 +92,25 @@ def handler(event, context):
                     last_evaluated_key = None
 
                 curve = body.get("curve")
-
                 accumulated = []
                 remaining = max_results
 
                 while remaining > 0 and current_prefix_idx < len(prefixes):
                     prefix = prefixes[current_prefix_idx]
+
                     query_args = {
                         "IndexName": "pk-uwi-index",
                         "KeyConditionExpression": Key("pk").eq("RASTER")
                         & Key("uwi").begins_with(prefix),
-                        "Limit": min(remaining, 100),
+                        "Limit": min(remaining, 100) if remaining > 0 else 100,
                     }
 
-                    # Add FilterExpression if curve is provided
                     if curve:
-                        query_args[
-                            "FilterExpression"
-                        ] = """contains(calib_log_description_lc, :curve) or 
-                            contains(calib_file_name_lc, :curve) or 
-                            contains(calib_log_type_lc, :curve)"""
+                        query_args["FilterExpression"] = (
+                            "contains(calib_log_description_lc, :curve) or "
+                            "contains(calib_file_name_lc, :curve) or "
+                            "contains(calib_log_type_lc, :curve)"
+                        )
                         query_args["ExpressionAttributeValues"] = {
                             ":curve": curve.lower()
                         }
@@ -127,20 +121,18 @@ def handler(event, context):
                     response = table.query(**query_args)
                     batch_items = response.get("Items", [])
                     accumulated.extend(batch_items)
-                    remaining -= len(batch_items)
+                    remaining -= len(batch_items)  # This should never go negative
                     last_evaluated_key = response.get("LastEvaluatedKey")
 
-                    if last_evaluated_key:
-                        break  # preserve state if more items exist
-                    else:
-                        current_prefix_idx += 1  # Move to next prefix
+                    if not last_evaluated_key:
+                        current_prefix_idx += 1
                         last_evaluated_key = None
 
-                # Build next token with original prefixes
+                # Generate new token only if more results exist
                 new_token = None
-                if (last_evaluated_key and remaining > 0) or current_prefix_idx < len(
-                    prefixes
-                ):
+                if (
+                    last_evaluated_key or current_prefix_idx < len(prefixes)
+                ) and remaining <= 0:
                     new_token = {
                         "prefixes": prefixes,
                         "prefix_idx": current_prefix_idx,
@@ -157,6 +149,7 @@ def handler(event, context):
                     else None,
                     "generatedAt": datetime.now().isoformat(),
                 }
+
                 return create_response(
                     event, 200, {"data": accumulated, "metadata": metadata}
                 )
@@ -184,8 +177,6 @@ def handler(event, context):
                         "count": len(body),
                     },
                 )
-
-        ###
 
         elif http_method == "GET":
             if resource_type == "repo":

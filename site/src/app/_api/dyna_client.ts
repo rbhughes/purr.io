@@ -3,7 +3,7 @@ import { Repo } from "@/types/repo";
 
 const ENDPOINTS = {
   GET_REPOS: "/repos",
-  SEARCH_RASTERS: "/rasters",
+  SEARCH_RASTERS: "/search",
 };
 
 type HttpMethod = "GET" | "POST" | "PUT" | "DELETE";
@@ -32,11 +32,6 @@ const client = {
     }
 
     const response = await fetch(`${BASE_URL}${endpoint}`, options);
-
-    console.log("-----------");
-    console.log(`${BASE_URL}${endpoint}`);
-    console.log("-----------");
-
     const responseData: T = await response.json();
 
     return { data: responseData, status: response.status };
@@ -59,21 +54,41 @@ export const getRepos = async (): Promise<Repo[]> => {
   }
 };
 
-interface RepoSearchParams {
+export interface RepoSearchParams {
+  maxResults: number;
   uwis: string[];
-  curves: string[];
+  curve?: string | null | undefined;
+  paginationToken?: string | null | undefined;
 }
-export const searchRasters = async (params: RepoSearchParams): Promise<any> => {
-  const { uwis, curves } = params;
+
+interface SearchResponse {
+  data: any[];
+  metadata: {
+    paginationToken?: string;
+  };
+}
+
+export const searchRasters = async (
+  params: RepoSearchParams
+): Promise<SearchResponse> => {
+  console.log("--------------------------");
+  console.log(params);
+  console.log("--------------------------");
+
   try {
-    const payload = { uwis, curves };
-    console.log("========================");
-    console.log(payload);
-    console.log("========================");
-    const response = await client.post<any>(ENDPOINTS.SEARCH_RASTERS, payload);
+    const payload = {
+      ...params,
+      paginationToken: params.paginationToken || undefined,
+    };
+
+    const response = await client.post<SearchResponse>(
+      ENDPOINTS.SEARCH_RASTERS,
+      payload
+    );
+
     return response.data;
   } catch (error) {
-    console.error("Error searching rasters:", error);
-    throw error; // Re-throw error for further handling
+    console.error("Search error:", error);
+    throw error;
   }
 };
