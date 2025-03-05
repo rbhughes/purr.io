@@ -1,6 +1,7 @@
 "use client";
 
 import RasterSearch from "./search";
+import MyForm from "./search";
 
 export default function Raster() {
   return (
@@ -15,7 +16,8 @@ export default function Raster() {
           aspernatur nesciunt laudantium ab atque.
         </p>
         hello
-        <RasterSearch />
+        {/* <RasterSearch /> */}
+        <MyForm />
         hello
       </div>
     </div>
