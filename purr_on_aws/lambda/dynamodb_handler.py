@@ -4,14 +4,20 @@ import os
 import base64
 from decimal import Decimal
 from datetime import datetime, timezone
-from boto3.dynamodb.conditions import Key
+from boto3.dynamodb.conditions import Key, Attr, Or
 
+# Constants
+MAX_RESULTS = 500
+DEFAULT_RESULTS = 100
+ALLOWED_ORIGINS = {
+    "http://localhost:3000",
+    f"https://{os.environ['PURR_SUBDOMAIN']}.{os.environ['PURR_DOMAIN']}",
+}
+VALID_RESOURCES = {"repo", "raster", "vector", "search"}
+
+# DynamoDB setup
 dynamodb = boto3.resource("dynamodb")
 table = dynamodb.Table(os.environ["TABLE_NAME"])
-purr_subdomain = dynamodb.Table(os.environ["PURR_SUBDOMAIN"])
-purr_domain = dynamodb.Table(os.environ["PURR_DOMAIN"])
-
-ALLOWED_ORIGINS = {"http://localhost:3000", f"https://{purr_subdomain}.{purr_domain}"}
 
 
 class DecimalEncoder(json.JSONEncoder):
@@ -55,144 +61,156 @@ def create_response(event, status_code, body, extra_headers=None):
     }
 
 
+def get_resource_type(event):
+    resource_path = event["path"].split("/")
+    return resource_path[-1].lower().rstrip("s")
+
+
+def is_valid_resource(resource_type):
+    return resource_type in VALID_RESOURCES
+
+
+def parse_body(event):
+    try:
+        return json.loads(event["body"])
+    except json.JSONDecodeError:
+        raise ValueError("Invalid JSON format")
+
+
+def handle_search(event, body):
+    # We could supply a count, but it might not be accurate and isn't free
+    # count_args = build_query_args(uwis[0], curve, max_results, None)
+    # count_args["Select"] = "COUNT"
+    # count_response = table.query(**count_args)
+    # estimated_total = count_response.get('Count', 0)
+
+    max_results = min(int(body.get("maxResults", DEFAULT_RESULTS)), MAX_RESULTS)
+    uwis = body.get("uwis", [])
+    curve = body.get("curve")
+    exclusive_start_key = (
+        json.loads(base64.b64decode(body.get("paginationToken", "")).decode())
+        if body.get("paginationToken")
+        else None
+    )
+
+    all_items = []
+    last_evaluated_key = None
+
+    for uwi_prefix in uwis:
+        while len(all_items) < max_results:
+            query_args = build_query_args(
+                uwi_prefix, curve, max_results - len(all_items), exclusive_start_key
+            )
+            response = table.query(**query_args)
+
+            all_items.extend(response.get("Items", []))
+            last_evaluated_key = response.get("LastEvaluatedKey")
+
+            if not last_evaluated_key:
+                break
+            exclusive_start_key = last_evaluated_key
+
+        if len(all_items) >= max_results:
+            break
+
+    new_token = (
+        base64.b64encode(json.dumps(last_evaluated_key).encode()).decode()
+        if last_evaluated_key
+        else None
+    )
+
+    metadata = {
+        "returnedCount": len(all_items[:max_results]),
+        "totalRequested": max_results,
+        "paginationToken": new_token,
+        "generatedAt": datetime.now().isoformat(),
+    }
+
+    return create_response(
+        event, 200, {"data": all_items[:max_results], "metadata": metadata}
+    )
+
+
+def build_query_args(uwi_prefix, curve, max_results, exclusive_start_key):
+    query_args = {
+        "IndexName": "pk-uwi-index",
+        "KeyConditionExpression": Key("pk").eq("RASTER")
+        & Key("uwi").begins_with(uwi_prefix),
+        "Limit": max_results,
+    }
+
+    if curve:
+        query_args["FilterExpression"] = (
+            "contains(calib_log_description_lc, :curve) or "
+            "contains(calib_file_name_lc, :curve) or "
+            "contains(calib_log_type_lc, :curve)"
+        )
+        query_args["ExpressionAttributeValues"] = {":curve": curve.lower()}
+
+    if exclusive_start_key:
+        query_args["ExclusiveStartKey"] = exclusive_start_key
+
+    return query_args
+
+
+def handle_create(event, body, resource_type):
+    if not isinstance(body, list):
+        raise ValueError("Request body must be an array")
+
+    with table.batch_writer() as batch:
+        for item in body:
+            now = datetime.now(timezone.utc).isoformat()
+            processed_item = DecimalEncoder.prepare_for_dynamodb(
+                {**item, "created_at": now, "updated_at": now}
+            )
+            batch.put_item(Item=processed_item)
+
+    return create_response(
+        event,
+        201,
+        {
+            "message": f"Successfully created {len(body)} {resource_type}(s)",
+            "resource_type": resource_type,
+            "count": len(body),
+        },
+    )
+
+
+def handle_get(event, resource_type):
+    if resource_type == "repo":
+        response = table.query(KeyConditionExpression=Key("pk").eq("REPO"))
+    elif resource_type == "raster":
+        response = table.query(KeyConditionExpression=Key("pk").eq("RASTER"))
+    else:
+        response = table.query(
+            KeyConditionExpression="begins_with(pk, :resource_prefix)",
+            ExpressionAttributeValues={":resource_prefix": f"{resource_type.upper()}#"},
+        )
+    return create_response(event, 200, response["Items"])
+
+
 def handler(event, context):
     try:
         http_method = event["httpMethod"]
-        resource_path = event["path"].split("/")
-        resource_type = resource_path[-1].lower().rstrip("s")
+        resource_type = get_resource_type(event)
 
-        valid_resources = {"repo", "raster", "vector", "search"}
-        if resource_type not in valid_resources:
+        if not is_valid_resource(resource_type):
             return create_response(event, 400, {"error": "Invalid resource type"})
 
         if http_method == "POST":
-            try:
-                body = json.loads(event["body"])
-            except json.JSONDecodeError:
-                return create_response(event, 400, {"error": "Invalid JSON format"})
-
+            body = parse_body(event)
             if resource_type == "search":
-                MAX = 500
-                max_results = min(int(body.get("maxResults", 100)), MAX)
-                pagination_token = (
-                    json.loads(
-                        base64.b64decode(body.get("paginationToken", "")).decode()
-                    )
-                    if body.get("paginationToken")
-                    else None
-                )
-
-                if pagination_token:
-                    prefixes = pagination_token.get("prefixes", [])
-                    current_prefix_idx = pagination_token.get("prefix_idx", 0)
-                    last_evaluated_key = pagination_token.get("last_evaluated_key")
-                else:
-                    prefixes = body.get("uwis", [])
-                    current_prefix_idx = 0
-                    last_evaluated_key = None
-
-                curve = body.get("curve")
-                accumulated = []
-                remaining = max_results
-
-                while remaining > 0 and current_prefix_idx < len(prefixes):
-                    prefix = prefixes[current_prefix_idx]
-
-                    query_args = {
-                        "IndexName": "pk-uwi-index",
-                        "KeyConditionExpression": Key("pk").eq("RASTER")
-                        & Key("uwi").begins_with(prefix),
-                        "Limit": min(remaining, 100) if remaining > 0 else 100,
-                    }
-
-                    if curve:
-                        query_args["FilterExpression"] = (
-                            "contains(calib_log_description_lc, :curve) or "
-                            "contains(calib_file_name_lc, :curve) or "
-                            "contains(calib_log_type_lc, :curve)"
-                        )
-                        query_args["ExpressionAttributeValues"] = {
-                            ":curve": curve.lower()
-                        }
-
-                    if last_evaluated_key:
-                        query_args["ExclusiveStartKey"] = last_evaluated_key
-
-                    response = table.query(**query_args)
-                    batch_items = response.get("Items", [])
-                    accumulated.extend(batch_items)
-                    remaining -= len(batch_items)  # This should never go negative
-                    last_evaluated_key = response.get("LastEvaluatedKey")
-
-                    if not last_evaluated_key:
-                        current_prefix_idx += 1
-                        last_evaluated_key = None
-
-                # Generate new token only if more results exist
-                new_token = None
-                if (
-                    last_evaluated_key or current_prefix_idx < len(prefixes)
-                ) and remaining <= 0:
-                    new_token = {
-                        "prefixes": prefixes,
-                        "prefix_idx": current_prefix_idx,
-                        "last_evaluated_key": last_evaluated_key,
-                    }
-
-                metadata = {
-                    "returnedCount": len(accumulated),
-                    "totalRequested": max_results,
-                    "paginationToken": base64.b64encode(
-                        json.dumps(new_token).encode()
-                    ).decode()
-                    if new_token
-                    else None,
-                    "generatedAt": datetime.now().isoformat(),
-                }
-
-                return create_response(
-                    event, 200, {"data": accumulated, "metadata": metadata}
-                )
-
+                return handle_search(event, body)
             else:
-                if not isinstance(body, list):
-                    return create_response(
-                        event, 400, {"error": "Request body must be an array"}
-                    )
-
-                with table.batch_writer() as batch:
-                    for item in body:
-                        now = datetime.now(timezone.utc).isoformat()
-                        processed_item = DecimalEncoder.prepare_for_dynamodb(
-                            {**item, "created_at": now, "updated_at": now}
-                        )
-                        batch.put_item(Item=processed_item)
-
-                return create_response(
-                    event,
-                    201,
-                    {
-                        "message": f"Successfully created {len(body)} {resource_type}(s)",
-                        "resource_type": resource_type,
-                        "count": len(body),
-                    },
-                )
-
+                return handle_create(event, body, resource_type)
         elif http_method == "GET":
-            if resource_type == "repo":
-                response = table.query(KeyConditionExpression=Key("pk").eq("REPO"))
-            elif resource_type == "raster":
-                response = table.query(KeyConditionExpression=Key("pk").eq("RASTER"))
-            else:
-                response = table.query(
-                    KeyConditionExpression="begins_with(pk, :resource_prefix)",
-                    ExpressionAttributeValues={
-                        ":resource_prefix": f"{resource_type.upper()}#"
-                    },
-                )
-            return create_response(event, 200, response["Items"])
+            return handle_get(event, resource_type)
+        else:
+            return create_response(event, 405, {"error": "Method not allowed"})
 
-        return create_response(event, 405, {"error": "Method not allowed"})
-
+    except ValueError as ve:
+        print(ve)
+        return create_response(event, 400, {"error": str(ve)})
     except Exception as e:
+        print(e)
         return create_response(event, 500, {"error": str(e)})

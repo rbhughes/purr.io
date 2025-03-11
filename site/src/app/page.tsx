@@ -6,7 +6,7 @@ export default function Home() {
       <h1 className="text-2xl font-heading sm:text-4xl">John Doe</h1>
       <p className="mt-2 text-lg sm:text-xl">Software Engineer</p>
       <div className="mt-8 text-base sm:text-lg">
-        <p>Hi, my name is John Doe, software engineer based in NYC.</p>
+        <p>Hi, my name is John Dee, software engineer based in NYC.</p>
 
         <br />
 

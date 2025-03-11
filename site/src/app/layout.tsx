@@ -20,7 +20,7 @@ const purr_font = Noto_Sans_Display({ subsets: ["latin"] });
 //const purr_font = DM_Mono({ weight: "400" });
 
 export const metadata: Metadata = {
-  title: "John Doe",
+  title: "purr.io",
 };
 
 // supressHydrationWarnings is recommended here:

@@ -20,3 +20,7 @@ export function parseCurveInput(input: string): string[] {
   const uniqueTokens = Array.from(new Set(tokens));
   return uniqueTokens;
 }
+
+export function formatRasterSearchResults(results: any) {
+  results.map((x) => console.log(JSON.stringify(x, null, 2)));
+}
