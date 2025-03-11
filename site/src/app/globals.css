@@ -34,3 +34,30 @@ body::-webkit-scrollbar-thumb {
     scrollbar-color: var(--sb-thumb-color) var(--sb-track-color);
   }
 }
+
+.brute-form {
+  @apply bg-bg dark:bg-darkBg
+      text-text dark:text-darkText
+      selection:text-text dark:selection:text-darkText
+      border-border dark:border-darkBorder;
+}
+
+.brute-shadow {
+  @apply shadow-light dark:shadow-dark rounded-base border-2 p-2;
+}
+
+.brute-white {
+  @apply bg-white dark:bg-darkBg
+      border-border dark:border-darkBorder;
+}
+
+.grid-paper {
+  background-size: 20px 20px;
+  background-image: radial-gradient(circle, #bbb 1px, rgba(0, 0, 0, 0) 1px);
+}
+
+@media (max-width: 768px) {
+  .flex-container {
+    flex-direction: column;
+  }
+}
