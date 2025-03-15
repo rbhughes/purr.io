@@ -1,23 +1,59 @@
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
-import { Repo } from "@/types/repo";
+import { Repo } from "@/ts/repo";
+import { Raster, DT_Raster, dtRasterKeys } from "@/ts/raster";
 
 const ENDPOINTS = {
   GET_REPOS: "/repos",
   SEARCH_RASTERS: "/search",
 };
 
-type HttpMethod = "GET" | "POST" | "PUT" | "DELETE";
+type HttpMethod = "GET" | "POST" | "DELETE";
 
 interface ApiResponse<T> {
   data: T;
   status: number;
 }
 
+interface ResponseMetadata {
+  returnedCount?: number;
+  totalRequested?: number;
+  paginationToken?: string;
+  generatedAt?: string;
+}
+
+interface FullRasterResponse {
+  data: Raster[];
+  metadata: ResponseMetadata;
+}
+
+interface FilteredRasterResponse {
+  data: DT_Raster[];
+  metadata: ResponseMetadata;
+}
+
+function filterRasterResponse(
+  response: FullRasterResponse
+): FilteredRasterResponse {
+  const filteredData = response.data.map((item) =>
+    dtRasterKeys.reduce((acc, key) => {
+      if (item[key] !== undefined) acc[key] = item[key];
+      return acc;
+    }, {} as DT_Raster)
+  );
+
+  return {
+    data: filteredData,
+    metadata: response.metadata,
+  };
+}
+
+//////////////////////////
+
 const client = {
-  request: async <T>(
+  request: async <T, D = unknown>(
     endpoint: string,
     method: HttpMethod,
-    data?: any
+    data?: D
   ): Promise<ApiResponse<T>> => {
     const options: RequestInit = {
       method,
@@ -37,10 +73,8 @@ const client = {
     return { data: responseData, status: response.status };
   },
   get: <T>(endpoint: string) => client.request<T>(endpoint, "GET"),
-  post: <T>(endpoint: string, data: any) =>
-    client.request<T>(endpoint, "POST", data),
-  put: <T>(endpoint: string, data: any) =>
-    client.request<T>(endpoint, "PUT", data),
+  post: <T, D = unknown>(endpoint: string, data?: D) =>
+    client.request<T, D>(endpoint, "POST", data),
   delete: <T>(endpoint: string) => client.request<T>(endpoint, "DELETE"),
 };
 
@@ -57,36 +91,25 @@ export const getRepos = async (): Promise<Repo[]> => {
 export interface RepoSearchParams {
   maxResults: number;
   uwis: string[];
-  curve?: string | null | undefined;
+  wordz?: string | null | undefined;
   paginationToken?: string | null | undefined;
-}
-
-interface SearchResponse {
-  data: any[];
-  metadata: {
-    paginationToken?: string;
-  };
 }
 
 export const searchRasters = async (
   params: RepoSearchParams
-): Promise<SearchResponse> => {
-  console.log("--------------------------");
-  console.log(params);
-  console.log("--------------------------");
-
+): Promise<FilteredRasterResponse> => {
   try {
     const payload = {
       ...params,
       paginationToken: params.paginationToken || undefined,
     };
 
-    const response = await client.post<SearchResponse>(
+    const response = await client.post<FullRasterResponse>(
       ENDPOINTS.SEARCH_RASTERS,
       payload
     );
-
-    return response.data;
+    const filteredRasters = filterRasterResponse(response.data);
+    return filteredRasters;
   } catch (error) {
     console.error("Search error:", error);
     throw error;

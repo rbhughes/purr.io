@@ -19,7 +19,7 @@ import {
   CardFooter,
   CardHeader,
   CardContent,
-  CardDescription,
+  //CardDescription,
   CardTitle,
 } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -32,8 +32,8 @@ import {
 } from "@/components/ui/popover";
 import { ChevronsUpDown } from "lucide-react";
 import PaginationManager from "../_api/pagination";
-import { searchRasters, RepoSearchParams } from "../_api/dyna_client";
-import { formatRasterSearchResults } from "@/lib/purr_utils";
+import { searchRasters } from "../_api/dyna_client";
+//import { formatRasterSearchResults } from "@/lib/purr_utils";
 
 import DataTableDemo from "./data-table";
 
@@ -54,7 +54,7 @@ export default function MyForm() {
     uwiList: z.string().min(2, {
       message: "Partial UWI should be at least 2 characters",
     }),
-    curve: z.string().nullable().optional(),
+    wordz: z.string().nullable().optional(),
   });
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -62,7 +62,7 @@ export default function MyForm() {
     defaultValues: {
       maxResults: 10,
       uwiList: "",
-      curve: null,
+      wordz: null,
     },
   });
 
@@ -74,7 +74,7 @@ export default function MyForm() {
       const response = await searchRasters({
         maxResults: values.maxResults,
         uwis: parseUwiInput(values.uwiList),
-        curve: values.curve || null,
+        wordz: values.wordz || null,
         paginationToken: pm.current.currentToken, // Send raw token
       });
 
@@ -93,11 +93,11 @@ export default function MyForm() {
       setHasMoreResults(!!pm.current.currentToken);
 
       // Debug logs
-      console.log("Current token:", pm.current.currentToken);
-      console.log(
-        "Response data:",
-        response.data.map((x) => x.sk)
-      );
+      // console.log("Current token:", pm.current.currentToken);
+      // console.log(
+      //   "Response data:",
+      //   response.data.map((x) => x.raster_file_name)
+      // );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Search failed");
     } finally {
@@ -116,6 +116,9 @@ export default function MyForm() {
     handleSearch(form.getValues());
   }
 
+  {
+    console.log(results);
+  }
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-4 md:flex-row md:gap-4">
@@ -153,10 +156,10 @@ export default function MyForm() {
                 {/* add vertical space here */}
                 <FormField
                   control={form.control}
-                  name="curve"
+                  name="wordz"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Curve Filter</FormLabel>
+                      <FormLabel>Search Terms</FormLabel>
                       <FormControl>
                         <Input
                           placeholder=""
@@ -167,7 +170,7 @@ export default function MyForm() {
                         />
                       </FormControl>
                       <FormDescription>
-                        Limit by curve mnemonic, class, description or file name
+                        Filter by mnemonic, curve class, filename, etc.
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -180,7 +183,7 @@ export default function MyForm() {
                   name="maxResults"
                   render={({ field }) => (
                     <FormItem className="flex flex-col">
-                      <FormLabel>Number</FormLabel>
+                      <FormLabel>Results per Page</FormLabel>
                       <Popover
                         open={isPopoverOpen}
                         onOpenChange={setIsPopoverOpen}
@@ -203,34 +206,43 @@ export default function MyForm() {
                         </PopoverTrigger>
                         <PopoverContent className="w-[120px] p-0 brute-form">
                           <div className="p-2">
-                            {maxResultsOptions.map((number) => (
+                            {maxResultsOptions.map((num) => (
                               <Button
-                                key={number}
+                                key={num}
                                 variant="neutral"
                                 className="w-full"
                                 onClick={() => {
                                   setIsPopoverOpen(false);
-                                  form.setValue("maxResults", number);
+                                  form.setValue("maxResults", num);
                                 }}
                               >
-                                {number}
+                                {num}
                               </Button>
                             ))}
                           </div>
                         </PopoverContent>
                       </Popover>
-                      <FormDescription>Max page size</FormDescription>
+                      {/* <FormDescription>Limit results per page</FormDescription> */}
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-                <Button
-                  variant="noShadow"
-                  type="submit"
-                  className="brute-shadow mt-[-6px]"
-                >
-                  Submit
-                </Button>
+                <div>
+                  <Button
+                    variant="neutral"
+                    // className="brute-shadow mt-[-6px]"
+                    className="brute-shadow mt-5 mr-4"
+                  >
+                    Reset
+                  </Button>
+                  <Button
+                    variant="default"
+                    type="submit"
+                    className="brute-shadow mt-5"
+                  >
+                    Submit
+                  </Button>
+                </div>
               </CardFooter>
             </form>
           </Form>
@@ -241,11 +253,14 @@ export default function MyForm() {
           {results.length > 0 && (
             <div className="p-4 bg-white rounded-md shadow">
               <h2 className="text-xl font-bold mb-4">Search Results</h2>
-              {JSON.stringify(
-                results.map((x) => x.sk),
-                null,
-                2
-              )}
+              <ul>
+                {results.map((r) => (
+                  <li key={r.sk}>
+                    {r.uwi} | {r.calib_file_name} | {r.raster_file_name}
+                  </li>
+                ))}
+              </ul>
+
               {hasMoreResults && (
                 <Button
                   onClick={handleLoadMore}
@@ -259,15 +274,7 @@ export default function MyForm() {
           )}
         </Card>
       </div>
-      <div className="flex-1 bg-blue-200 p-4">
-        Right Column (Expands to fill remaining width)
-      </div>
-    </div>
-  );
 
-  return (
-    // <div className="flex flex-col items-center">
-    <div className="flex flex-col items-center">
       <div className="w-full max-w-[90%] mt-8">
         {isLoading && (
           <div className="p-4 bg-yellow-100 mb-4">Loading results...</div>
@@ -277,29 +284,11 @@ export default function MyForm() {
           <div className="p-4 text-red-500 bg-red-100 mb-4">{error}</div>
         )}
       </div>
-      {formatRasterSearchResults(results)}
-      <div>
-        {results.length > 0 && (
-          <div className="p-4 bg-white rounded-md shadow">
-            <h2 className="text-xl font-bold mb-4">Search Results</h2>
-            {JSON.stringify(
-              results.map((x) => x.sk),
-              null,
-              2
-            )}
-            {hasMoreResults && (
-              <Button
-                onClick={handleLoadMore}
-                disabled={isLoading}
-                className="mt-4"
-              >
-                {isLoading ? "Loading..." : "Load More"}
-              </Button>
-            )}
-          </div>
-        )}
+
+      <div className="flex-1 bg-blue-200 p-4">
+        Bottom Tray (Will hold selected table items)
+        <DataTableDemo data={results} />
       </div>
-      {/* <DataTableDemo /> */}
     </div>
   );
 }
