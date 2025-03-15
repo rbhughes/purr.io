@@ -4,7 +4,7 @@ import React from "react";
 //import { getRepos } from "../_utils/apiHelpers";
 import { getRepos } from "../_api/dyna_client";
 
-import { Repo } from "@/types/repo";
+import { Repo } from "@/ts/repo";
 
 function RepoList() {
   const [repos, setRepos] = React.useState<Repo[]>([]);

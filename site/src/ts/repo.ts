@@ -9,7 +9,6 @@ export interface Repo {
   display_epsg: number;
   storage_epsg: number;
   suite: string;
-  type: string;
   created_at: string;
   updated_at: string;
 }

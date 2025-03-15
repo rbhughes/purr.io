@@ -79,14 +79,14 @@ def parse_body(event):
 
 def handle_search(event, body):
     # We could supply a count, but it might not be accurate and isn't free
-    # count_args = build_query_args(uwis[0], curve, max_results, None)
+    # count_args = build_query_args(uwis[0], wordz, max_results, None)
     # count_args["Select"] = "COUNT"
     # count_response = table.query(**count_args)
     # estimated_total = count_response.get('Count', 0)
 
     max_results = min(int(body.get("maxResults", DEFAULT_RESULTS)), MAX_RESULTS)
     uwis = body.get("uwis", [])
-    curve = body.get("curve")
+    wordz = body.get("wordz")
     exclusive_start_key = (
         json.loads(base64.b64decode(body.get("paginationToken", "")).decode())
         if body.get("paginationToken")
@@ -99,7 +99,7 @@ def handle_search(event, body):
     for uwi_prefix in uwis:
         while len(all_items) < max_results:
             query_args = build_query_args(
-                uwi_prefix, curve, max_results - len(all_items), exclusive_start_key
+                uwi_prefix, wordz, max_results - len(all_items), exclusive_start_key
             )
             response = table.query(**query_args)
 
@@ -131,7 +131,7 @@ def handle_search(event, body):
     )
 
 
-def build_query_args(uwi_prefix, curve, max_results, exclusive_start_key):
+def build_query_args(uwi_prefix, wordz, max_results, exclusive_start_key):
     query_args = {
         "IndexName": "pk-uwi-index",
         "KeyConditionExpression": Key("pk").eq("RASTER")
@@ -139,13 +139,9 @@ def build_query_args(uwi_prefix, curve, max_results, exclusive_start_key):
         "Limit": max_results,
     }
 
-    if curve:
-        query_args["FilterExpression"] = (
-            "contains(calib_log_description_lc, :curve) or "
-            "contains(calib_file_name_lc, :curve) or "
-            "contains(calib_log_type_lc, :curve)"
-        )
-        query_args["ExpressionAttributeValues"] = {":curve": curve.lower()}
+    if wordz:
+        query_args["FilterExpression"] = "contains(wordz, :wordz)"
+        query_args["ExpressionAttributeValues"] = {":wordz": wordz.lower()}
 
     if exclusive_start_key:
         query_args["ExclusiveStartKey"] = exclusive_start_key
