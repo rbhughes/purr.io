@@ -1,6 +1,6 @@
 "use client";
 
-import RasterSearch from "./search";
+//import RasterSearch from "./search";
 import MyForm from "./search";
 
 export default function Raster() {

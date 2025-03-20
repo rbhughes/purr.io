@@ -121,7 +121,7 @@ export default function MyForm() {
   }
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-4 md:flex-row md:gap-4">
+      <div className="flex flex-col gap-4 md:flex-row md:gap-8">
         <Card className="w-[400px] flex-shrink-0 brute-white brute-shadow grid-paper">
           <Form {...form}>
             <form
@@ -161,9 +161,9 @@ export default function MyForm() {
                     <FormItem>
                       <FormLabel>Search Terms</FormLabel>
                       <FormControl>
-                        <Input
+                        <Textarea
                           placeholder=""
-                          type="text"
+                          //type="text"
                           {...field}
                           value={field.value ?? ""}
                           className="brute-form"
@@ -248,30 +248,11 @@ export default function MyForm() {
           </Form>
         </Card>
 
-        <Card className="flex-1 overflow-y-auto brute-white brute-shadow grid-paper">
-          I will hold stats until search happens
-          {results.length > 0 && (
-            <div className="p-4 bg-white rounded-md shadow">
-              <h2 className="text-xl font-bold mb-4">Search Results</h2>
-              <ul>
-                {results.map((r) => (
-                  <li key={r.sk}>
-                    {r.uwi} | {r.calib_file_name} | {r.raster_file_name}
-                  </li>
-                ))}
-              </ul>
-
-              {hasMoreResults && (
-                <Button
-                  onClick={handleLoadMore}
-                  disabled={isLoading}
-                  className="mt-4"
-                >
-                  {isLoading ? "Loading..." : "Load More"}
-                </Button>
-              )}
-            </div>
-          )}
+        {/* <Card className="flex-1 overflow-y-auto brute-white brute-shadow grid-paper"> */}
+        <Card className="flex-1 brute-white brute-shadow grid-paper">
+          <CardContent>
+            <DataTableDemo data={results} />
+          </CardContent>
         </Card>
       </div>
 
@@ -286,8 +267,30 @@ export default function MyForm() {
       </div>
 
       <div className="flex-1 bg-blue-200 p-4">
-        Bottom Tray (Will hold selected table items)
-        <DataTableDemo data={results} />
+        Bottom Tray (Will hold selected table items) I will hold stats until
+        search happens
+        {results.length > 0 && (
+          <div className="p-4 bg-white rounded-md shadow">
+            <h2 className="text-xl font-bold mb-4">Search Results</h2>
+            <ul>
+              {results.map((r) => (
+                <li key={r.sk}>
+                  {r.uwi} | {r.calib_file_name} | {r.raster_file_name}
+                </li>
+              ))}
+            </ul>
+
+            {hasMoreResults && (
+              <Button
+                onClick={handleLoadMore}
+                disabled={isLoading}
+                className="mt-4"
+              >
+                {isLoading ? "Loading..." : "Load More"}
+              </Button>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

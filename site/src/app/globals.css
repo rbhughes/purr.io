@@ -35,6 +35,12 @@ body::-webkit-scrollbar-thumb {
   }
 }
 
+@media (max-width: 768px) {
+  .flex-container {
+    flex-direction: column;
+  }
+}
+
 .brute-form {
   @apply bg-bg dark:bg-darkBg
       text-text dark:text-darkText
@@ -56,8 +62,21 @@ body::-webkit-scrollbar-thumb {
   background-image: radial-gradient(circle, #bbb 1px, rgba(0, 0, 0, 0) 1px);
 }
 
-@media (max-width: 768px) {
-  .flex-container {
-    flex-direction: column;
-  }
+/* .brute-table tr,
+.brute-table td {
+  @apply bg-bg dark:bg-darkBg
+      border-border dark:border-darkBorder
+      h-2;
+} */
+
+.brute-table th {
+  @apply bg-bg;
+}
+
+.brute-table td,
+.brute-table tr {
+  @apply py-1;
+  @apply bg-white dark:bg-darkBg
+      border-bg dark:border-darkBorder
+      border-b;
 }

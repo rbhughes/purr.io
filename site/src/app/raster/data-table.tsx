@@ -102,11 +102,13 @@ export const columns: ColumnDef<DT_Raster>[] = [
     enableSorting: false,
     enableHiding: false,
   },
+
   {
     accessorKey: "uwi",
-    header: "UWI",
-    cell: ({ row }) => <div className="capitalize">{row.getValue("uwi")}</div>,
+    header: "uwi",
+    cell: ({ row }) => <div>{row.getValue("uwi")}</div>,
   },
+
   {
     accessorKey: "calib_file_name",
     header: ({ column }) => {
@@ -116,7 +118,7 @@ export const columns: ColumnDef<DT_Raster>[] = [
           size="sm"
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
-          Email
+          calib_file_name
           <ArrowUpDown className="ml-2 h-4 w-4" />
         </Button>
       );
@@ -125,6 +127,68 @@ export const columns: ColumnDef<DT_Raster>[] = [
       <div className="lowercase">{row.getValue("calib_file_name")}</div>
     ),
   },
+
+  {
+    accessorKey: "calib_segment_name",
+    header: ({ column }) => {
+      return (
+        <Button
+          variant="noShadow"
+          size="sm"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        >
+          calib_segment_name
+          <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      );
+    },
+    cell: ({ row }) => <div>{row.getValue("calib_segment_name")}</div>,
+  },
+
+  {
+    accessorKey: "calib_segment_top_depth",
+    header: ({ column }) => {
+      return (
+        <Button
+          variant="noShadow"
+          size="sm"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        >
+          calib_segment_top_depth
+          <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      );
+    },
+    cell: ({ row }) => <div>{row.getValue("calib_segment_top_depth")}</div>,
+  },
+  {
+    accessorKey: "calib_segment_base_depth",
+    header: ({ column }) => {
+      return (
+        <Button
+          variant="noShadow"
+          size="sm"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        >
+          calib_segment_base_depth
+          <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      );
+    },
+    cell: ({ row }) => <div>{row.getValue("calib_segment_base_depth")}</div>,
+  },
+
+  {
+    id: "units",
+    header: "units",
+    accessorFn: (row) => {
+      const cType = row.calib_log_depth_type ?? "";
+      const cUnit = row.calib_log_depth_unit ?? "";
+      return cType && cUnit ? `${cType}/${cUnit}` : cType || cUnit || "";
+    },
+    cell: ({ row }) => <div>{row.getValue("units")}</div>,
+  },
+
   {
     accessorKey: "raster_file_name",
     header: ({ column }) => {
@@ -134,7 +198,7 @@ export const columns: ColumnDef<DT_Raster>[] = [
           size="sm"
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
-          Email
+          raster_file_name
           <ArrowUpDown className="ml-2 h-4 w-4" />
         </Button>
       );
@@ -256,10 +320,10 @@ export default function DataTableDemo({ data }: { data: DT_Raster[] }) {
         </DropdownMenu>
       </div>
       <div className="rounded-md">
-        <Table>
+        <Table className="brute-table">
           <TableHeader className="font-heading">
             {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
+              <TableRow key={headerGroup.id} className="brute-white">
                 {headerGroup.headers.map((header) => {
                   return (
                     <TableHead key={header.id}>

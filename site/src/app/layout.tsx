@@ -38,7 +38,7 @@ export default function RootLayout({
           <ThemeProvider attribute="class" disableTransitionOnChange>
             <Nav />
             {/* <div className="text-text dark:text-darkText mx-auto w-[1400px] max-w-full px-5 pb-10 pt-28"> */}
-            <div className="text-text dark:text-darkText mx-auto w-[90%] max-w-full px-5 pb-10 pt-28">
+            <div className="text-text dark:text-darkText mx-auto w-[94%] max-w-full px-4 pb-10 pt-28">
               {children}
             </div>
           </ThemeProvider>
