@@ -50,12 +50,34 @@ export type DT_Raster = {
   sk: string;
   uwi: string;
   calib_file_name?: string;
+  calib_log_depth_type?: string;
+  calib_log_depth_unit?: string;
+  calib_segment_base_depth?: number;
+  calib_segment_name?: string;
+  calib_segment_top_depth?: number;
+  calib_type?: string;
+  calib_vault_fs_path?: string;
   raster_file_name?: string;
+  raster_vault_fs_path?: string;
+  well_county?: string;
+  well_name?: string;
+  well_state?: string;
 };
 
 export const dtRasterKeys: Array<keyof DT_Raster> = [
   "sk",
   "uwi",
   "calib_file_name",
+  "calib_log_depth_type",
+  "calib_log_depth_unit",
+  "calib_segment_base_depth",
+  "calib_segment_name",
+  "calib_segment_top_depth",
+  "calib_type",
+  "calib_vault_fs_path",
   "raster_file_name",
+  "raster_vault_fs_path",
+  "well_county",
+  "well_name",
+  "well_state",
 ];
