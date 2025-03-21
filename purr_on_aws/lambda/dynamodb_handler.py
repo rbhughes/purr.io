@@ -4,7 +4,7 @@ import os
 import base64
 from decimal import Decimal
 from datetime import datetime, timezone
-from boto3.dynamodb.conditions import Key, Attr, Or
+from boto3.dynamodb.conditions import Key
 
 # Constants
 MAX_RESULTS = 500
@@ -13,6 +13,7 @@ ALLOWED_ORIGINS = {
     "http://localhost:3000",
     f"https://{os.environ['PURR_SUBDOMAIN']}.{os.environ['PURR_DOMAIN']}",
 }
+
 VALID_RESOURCES = {"repo", "raster", "vector", "search"}
 
 # DynamoDB setup
@@ -40,7 +41,6 @@ class DecimalEncoder(json.JSONEncoder):
 def create_response(event, status_code, body, extra_headers=None):
     request_origin = event["headers"].get("origin", "")
     cors_origin = request_origin if request_origin in ALLOWED_ORIGINS else ""
-
     headers = {
         "Content-Type": "application/json",
         "Access-Control-Allow-Origin": cors_origin,
@@ -48,10 +48,8 @@ def create_response(event, status_code, body, extra_headers=None):
         "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
         "Access-Control-Allow-Credentials": "true",
     }
-
     if extra_headers:
         headers.update(extra_headers)
-
     return {
         "statusCode": status_code,
         "headers": headers,
@@ -78,43 +76,52 @@ def parse_body(event):
 
 
 def handle_search(event, body):
-    # We could supply a count, but it might not be accurate and isn't free
-    # count_args = build_query_args(uwis[0], wordz, max_results, None)
-    # count_args["Select"] = "COUNT"
-    # count_response = table.query(**count_args)
-    # estimated_total = count_response.get('Count', 0)
-
     max_results = min(int(body.get("maxResults", DEFAULT_RESULTS)), MAX_RESULTS)
     uwis = body.get("uwis", [])
     wordz = body.get("wordz")
-    exclusive_start_key = (
-        json.loads(base64.b64decode(body.get("paginationToken", "")).decode())
-        if body.get("paginationToken")
-        else None
-    )
+
+    if body.get("paginationToken"):
+        token_data = json.loads(
+            base64.b64decode(body.get("paginationToken", "")).decode()
+        )
+        exclusive_start_key = token_data.get("last_evaluated_key")
+        current_uwi_prefix = token_data.get("uwi_prefix")
+    else:
+        exclusive_start_key = None
+        current_uwi_prefix = None
 
     all_items = []
     last_evaluated_key = None
+    last_uwi_prefix = None
 
     for uwi_prefix in uwis:
+        if current_uwi_prefix and uwi_prefix != current_uwi_prefix:
+            continue
         while len(all_items) < max_results:
             query_args = build_query_args(
                 uwi_prefix, wordz, max_results - len(all_items), exclusive_start_key
             )
             response = table.query(**query_args)
-
             all_items.extend(response.get("Items", []))
             last_evaluated_key = response.get("LastEvaluatedKey")
-
             if not last_evaluated_key:
                 break
             exclusive_start_key = last_evaluated_key
-
+            last_uwi_prefix = uwi_prefix
         if len(all_items) >= max_results:
             break
+        current_uwi_prefix = None
+        exclusive_start_key = None
 
     new_token = (
-        base64.b64encode(json.dumps(last_evaluated_key).encode()).decode()
+        base64.b64encode(
+            json.dumps(
+                {
+                    "last_evaluated_key": last_evaluated_key,
+                    "uwi_prefix": last_uwi_prefix,
+                }
+            ).encode()
+        ).decode()
         if last_evaluated_key
         else None
     )
@@ -138,21 +145,17 @@ def build_query_args(uwi_prefix, wordz, max_results, exclusive_start_key):
         & Key("uwi").begins_with(uwi_prefix),
         "Limit": max_results,
     }
-
     if wordz:
         query_args["FilterExpression"] = "contains(wordz, :wordz)"
         query_args["ExpressionAttributeValues"] = {":wordz": wordz.lower()}
-
     if exclusive_start_key:
         query_args["ExclusiveStartKey"] = exclusive_start_key
-
     return query_args
 
 
 def handle_create(event, body, resource_type):
     if not isinstance(body, list):
         raise ValueError("Request body must be an array")
-
     with table.batch_writer() as batch:
         for item in body:
             now = datetime.now(timezone.utc).isoformat()
@@ -160,7 +163,6 @@ def handle_create(event, body, resource_type):
                 {**item, "created_at": now, "updated_at": now}
             )
             batch.put_item(Item=processed_item)
-
     return create_response(
         event,
         201,
@@ -189,10 +191,8 @@ def handler(event, context):
     try:
         http_method = event["httpMethod"]
         resource_type = get_resource_type(event)
-
         if not is_valid_resource(resource_type):
             return create_response(event, 400, {"error": "Invalid resource type"})
-
         if http_method == "POST":
             body = parse_body(event)
             if resource_type == "search":
@@ -203,7 +203,6 @@ def handler(event, context):
             return handle_get(event, resource_type)
         else:
             return create_response(event, 405, {"error": "Method not allowed"})
-
     except ValueError as ve:
         print(ve)
         return create_response(event, 400, {"error": str(ve)})

@@ -31,15 +31,38 @@ interface FilteredRasterResponse {
   metadata: ResponseMetadata;
 }
 
+// function filterRasterResponse(
+//   response: FullRasterResponse
+// ): FilteredRasterResponse {
+//   const filteredData = response.data.map((item) =>
+//     dtRasterKeys.reduce((acc, key) => {
+//       if (item[key] !== undefined) acc[key] = item[key];
+//       return acc;
+//     }, {} as DT_Raster)
+//   );
+
+//   return {
+//     data: filteredData,
+//     metadata: response.metadata,
+//   };
+// }
+
 function filterRasterResponse(
   response: FullRasterResponse
 ): FilteredRasterResponse {
-  const filteredData = response.data.map((item) =>
-    dtRasterKeys.reduce((acc, key) => {
-      if (item[key] !== undefined) acc[key] = item[key];
-      return acc;
-    }, {} as DT_Raster)
-  );
+  const filteredData = response.data.map((item) => {
+    const result: DT_Raster = {} as DT_Raster;
+
+    for (const key of dtRasterKeys) {
+      const value = item[key];
+      if (value !== undefined) {
+        // Type-safe assignment using direct type assertion
+        result[key] = value as DT_Raster[typeof key];
+      }
+    }
+
+    return result;
+  });
 
   return {
     data: filteredData,
@@ -108,6 +131,13 @@ export const searchRasters = async (
       ENDPOINTS.SEARCH_RASTERS,
       payload
     );
+
+    console.log("$$$$$$$$$$$$$$$$$$");
+    console.log(payload);
+    console.log("------------------------------------");
+    console.log(response);
+    console.log("$$$$$$$$$$$$$$$$$$");
+
     const filteredRasters = filterRasterResponse(response.data);
     return filteredRasters;
   } catch (error) {

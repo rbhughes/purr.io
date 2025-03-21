@@ -46,7 +46,25 @@ export interface Raster {
   well_wsn?: number;
 }
 
-export type DT_Raster = {
+// export type DT_Raster = {
+//   sk: string;
+//   uwi: string;
+//   calib_file_name?: string;
+//   calib_log_depth_type?: string;
+//   calib_log_depth_unit?: string;
+//   calib_segment_base_depth?: number;
+//   calib_segment_name?: string;
+//   calib_segment_top_depth?: number;
+//   calib_type?: string;
+//   calib_vault_fs_path?: string;
+//   raster_file_name?: string;
+//   raster_vault_fs_path?: string;
+//   well_county?: string;
+//   well_name?: string;
+//   well_state?: string;
+// };
+
+export interface DT_Raster {
   sk: string;
   uwi: string;
   calib_file_name?: string;
@@ -62,7 +80,7 @@ export type DT_Raster = {
   well_county?: string;
   well_name?: string;
   well_state?: string;
-};
+}
 
 export const dtRasterKeys: Array<keyof DT_Raster> = [
   "sk",

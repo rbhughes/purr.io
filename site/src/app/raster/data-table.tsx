@@ -18,6 +18,7 @@ import { ArrowUpDown, ChevronDown, MoreHorizontal } from "lucide-react";
 
 import * as React from "react";
 
+import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -39,47 +40,35 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-// const data: Payment[] = [
-//   {
-//     id: "m5gr84i9",
-//     amount: 316,
-//     status: "success",
-//     email: "ken99@yahoo.com",
-//   },
-//   {
-//     id: "3u1reuv4",
-//     amount: 242,
-//     status: "success",
-//     email: "Abe45@gmail.com",
-//   },
-//   {
-//     id: "derv1ws0",
-//     amount: 837,
-//     status: "processing",
-//     email: "Monserrat44@gmail.com",
-//   },
-//   {
-//     id: "5kma53ae",
-//     amount: 874,
-//     status: "success",
-//     email: "Silas22@gmail.com",
-//   },
-//   {
-//     id: "bhqecj4p",
-//     amount: 721,
-//     status: "failed",
-//     email: "carmella@hotmail.com",
-//   },
-// ];
+export const makeSortableColumn = (
+  colName: keyof DT_Raster,
+  colHeader: string
+): ColumnDef<DT_Raster> => {
+  return {
+    accessorKey: colName,
+    header: ({ column }) => (
+      <Label
+        className="flex items-center cursor-pointer"
+        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+      >
+        <span>{colHeader}</span>
+        <ArrowUpDown className="ml-2 h-4 w-4" />
+      </Label>
+    ),
+    cell: ({ row }) => <div>{row.getValue(colName)}</div>,
+    enableHiding: true,
+  };
+};
 
-// export type Payment = {
-//   id: string;
-//   amount: number;
-//   status: "pending" | "processing" | "success" | "failed";
-//   email: string;
-// };
+const colsVisible: VisibilityState = {
+  well_state: false,
+  well_county: false,
+  well_name: false,
+  raster_vault_fs_path: false,
+  calib_vault_fs_path: false,
+};
 
-export const columns: ColumnDef<DT_Raster>[] = [
+const columns: ColumnDef<DT_Raster>[] = [
   {
     id: "select",
     header: ({ table }) => (
@@ -103,125 +92,43 @@ export const columns: ColumnDef<DT_Raster>[] = [
     enableHiding: false,
   },
 
-  {
-    accessorKey: "uwi",
-    header: "uwi",
-    cell: ({ row }) => <div>{row.getValue("uwi")}</div>,
-  },
-
-  {
-    accessorKey: "calib_file_name",
-    header: ({ column }) => {
-      return (
-        <Button
-          variant="noShadow"
-          size="sm"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          calib_file_name
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      );
-    },
-    cell: ({ row }) => (
-      <div className="lowercase">{row.getValue("calib_file_name")}</div>
-    ),
-  },
-
-  {
-    accessorKey: "calib_segment_name",
-    header: ({ column }) => {
-      return (
-        <Button
-          variant="noShadow"
-          size="sm"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          calib_segment_name
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      );
-    },
-    cell: ({ row }) => <div>{row.getValue("calib_segment_name")}</div>,
-  },
-
-  {
-    accessorKey: "calib_segment_top_depth",
-    header: ({ column }) => {
-      return (
-        <Button
-          variant="noShadow"
-          size="sm"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          calib_segment_top_depth
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      );
-    },
-    cell: ({ row }) => <div>{row.getValue("calib_segment_top_depth")}</div>,
-  },
-  {
-    accessorKey: "calib_segment_base_depth",
-    header: ({ column }) => {
-      return (
-        <Button
-          variant="noShadow"
-          size="sm"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          calib_segment_base_depth
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      );
-    },
-    cell: ({ row }) => <div>{row.getValue("calib_segment_base_depth")}</div>,
-  },
+  makeSortableColumn("uwi", "uwi"),
+  makeSortableColumn("well_state", "state"),
+  makeSortableColumn("well_county", "county"),
+  makeSortableColumn("calib_segment_name", "curves"),
+  makeSortableColumn("calib_segment_top_depth", "top"),
+  makeSortableColumn("calib_segment_base_depth", "base"),
 
   {
     id: "units",
-    header: "units",
+    header: ({ column }) => (
+      <Label
+        className="flex items-center cursor-pointer"
+        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+      >
+        <span>units</span>
+        <ArrowUpDown className="ml-2 h-4 w-4" />
+      </Label>
+    ),
+
     accessorFn: (row) => {
       const cType = row.calib_log_depth_type ?? "";
       const cUnit = row.calib_log_depth_unit ?? "";
       return cType && cUnit ? `${cType}/${cUnit}` : cType || cUnit || "";
     },
+    sortingFn: (rowA, rowB, columnId) => {
+      const a = rowA.getValue(columnId) as string;
+      const b = rowB.getValue(columnId) as string;
+      return a.localeCompare(b);
+    },
     cell: ({ row }) => <div>{row.getValue("units")}</div>,
   },
 
-  {
-    accessorKey: "raster_file_name",
-    header: ({ column }) => {
-      return (
-        <Button
-          variant="noShadow"
-          size="sm"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          raster_file_name
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      );
-    },
-    cell: ({ row }) => (
-      <div className="lowercase">{row.getValue("raster_file_name")}</div>
-    ),
-  },
-  //   {
-  //     accessorKey: "amount",
-  //     header: () => <div className="text-right">Amount</div>,
-  //     cell: ({ row }) => {
-  //       const amount = parseFloat(row.getValue("amount"));
+  makeSortableColumn("calib_file_name", "calibration"),
+  makeSortableColumn("raster_file_name", "raster"),
+  makeSortableColumn("calib_vault_fs_path", "calib_path"),
+  makeSortableColumn("raster_vault_fs_path", "raster_path"),
 
-  //       // Format the amount as a dollar amount
-  //       const formatted = new Intl.NumberFormat("en-US", {
-  //         style: "currency",
-  //         currency: "USD",
-  //       }).format(amount);
-
-  //       return <div className="text-right font-base">{formatted}</div>;
-  //     },
-  //   },
   {
     id: "actions",
     enableHiding: false,
@@ -259,7 +166,7 @@ export default function DataTableDemo({ data }: { data: DT_Raster[] }) {
     []
   );
   const [columnVisibility, setColumnVisibility] =
-    React.useState<VisibilityState>({});
+    React.useState<VisibilityState>(colsVisible);
   const [rowSelection, setRowSelection] = React.useState({});
 
   const table = useReactTable({
