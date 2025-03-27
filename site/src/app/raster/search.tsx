@@ -23,7 +23,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
 import { parseUwiInput } from "@/lib/purr_utils";
 import {
   Popover,
@@ -36,14 +35,17 @@ import { searchRasters } from "../_api/dyna_client";
 //import { formatRasterSearchResults } from "@/lib/purr_utils";
 
 import DataTableDemo from "./data-table";
+import { Label } from "@/components/ui/label";
 
-export default function MyForm() {
+export default function RasterSearchForm() {
   const [results, setResults] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [hasMoreResults, setHasMoreResults] = useState<boolean>(true);
   const [isPopoverOpen, setIsPopoverOpen] = React.useState(false);
   // const [paginationToken, setPaginationToken] = useState<string | null>(null);
+  //
+  const [currentMaxResults, setCurrentMaxResults] = useState(10);
 
   const pm = React.useRef<PaginationManager>(new PaginationManager());
 
@@ -85,7 +87,7 @@ export default function MyForm() {
       //   setResults((prev) => [...prev, ...response.data]);
       // }
       setResults((prev) =>
-        pm.current.currentToken ? [...prev, ...response.data] : response.data
+        pm.current.currentToken ? [...prev, ...response.data] : response.data,
       );
 
       // Directly store the API's token without modification
@@ -106,6 +108,7 @@ export default function MyForm() {
   }
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
+    setCurrentMaxResults(values.maxResults);
     pm.current.currentToken = null;
     setResults([]);
     setHasMoreResults(true);
@@ -116,9 +119,9 @@ export default function MyForm() {
     handleSearch(form.getValues());
   }
 
-  {
-    console.log(results);
-  }
+  // {
+  //   console.log(results);
+  // }
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-4 md:flex-row md:gap-8">
@@ -196,7 +199,7 @@ export default function MyForm() {
                               className={cn(
                                 "w-[100px] justify-between",
                                 "brute-form",
-                                !field.value && "text-muted-foreground"
+                                !field.value && "text-muted-foreground;",
                               )}
                             >
                               {field.value || "max page results"}
@@ -204,16 +207,17 @@ export default function MyForm() {
                             </Button>
                           </FormControl>
                         </PopoverTrigger>
-                        <PopoverContent className="w-[120px] p-0 brute-form">
+                        <PopoverContent className="w-[120px] p-0 bg-white ">
                           <div className="p-2">
                             {maxResultsOptions.map((num) => (
                               <Button
                                 key={num}
                                 variant="neutral"
-                                className="w-full"
+                                className="w-full bg-bg"
                                 onClick={() => {
                                   setIsPopoverOpen(false);
                                   form.setValue("maxResults", num);
+                                  setCurrentMaxResults(num);
                                 }}
                               >
                                 {num}
@@ -251,7 +255,10 @@ export default function MyForm() {
         {/* <Card className="flex-1 overflow-y-auto brute-white brute-shadow grid-paper"> */}
         <Card className="flex-1 brute-white brute-shadow grid-paper">
           <CardContent>
-            <DataTableDemo data={results} />
+            <DataTableDemo
+              data={results}
+              pageSize={form.getValues().maxResults}
+            />
           </CardContent>
         </Card>
       </div>
