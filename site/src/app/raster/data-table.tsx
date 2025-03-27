@@ -1,6 +1,6 @@
 "use client";
 
-import { Raster, DT_Raster, dtRasterKeys } from "@/ts/raster";
+import { DT_Raster, dtRasterKeys } from "@/ts/raster";
 
 import {
   ColumnDef,
@@ -42,7 +42,7 @@ import {
 
 export const makeSortableColumn = (
   colName: keyof DT_Raster,
-  colHeader: string
+  colHeader: string,
 ): ColumnDef<DT_Raster> => {
   return {
     accessorKey: colName,
@@ -129,41 +129,47 @@ const columns: ColumnDef<DT_Raster>[] = [
   makeSortableColumn("calib_vault_fs_path", "calib_path"),
   makeSortableColumn("raster_vault_fs_path", "raster_path"),
 
-  {
-    id: "actions",
-    enableHiding: false,
-    cell: ({ row }) => {
-      const r = row.original;
+  // {
+  //   id: "actions",
+  //   enableHiding: false,
+  //   cell: ({ row }) => {
+  //     const r = row.original;
 
-      return (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="noShadow" className="h-8 w-8 p-0">
-              <span className="sr-only">Open menu</span>
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-            <DropdownMenuItem
-              onClick={() => navigator.clipboard.writeText(r.sk)}
-            >
-              Copy payment ID
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem>View customer</DropdownMenuItem>
-            <DropdownMenuItem>View payment details</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      );
-    },
-  },
+  //     return (
+  //       <DropdownMenu>
+  //         <DropdownMenuTrigger asChild>
+  //           <Button variant="noShadow" className="h-8 w-8 p-0">
+  //             <span className="sr-only">Open menu</span>
+  //             <MoreHorizontal className="h-4 w-4" />
+  //           </Button>
+  //         </DropdownMenuTrigger>
+  //         <DropdownMenuContent align="end">
+  //           <DropdownMenuLabel>Actions</DropdownMenuLabel>
+  //           <DropdownMenuItem
+  //             onClick={() => navigator.clipboard.writeText(r.sk)}
+  //           >
+  //             Copy payment ID
+  //           </DropdownMenuItem>
+  //           <DropdownMenuSeparator />
+  //           <DropdownMenuItem>View customer</DropdownMenuItem>
+  //           <DropdownMenuItem>View payment details</DropdownMenuItem>
+  //         </DropdownMenuContent>
+  //       </DropdownMenu>
+  //     );
+  //   },
+  // },
 ];
 
-export default function DataTableDemo({ data }: { data: DT_Raster[] }) {
+export default function DataTableDemo({
+  data,
+  pageSize,
+}: {
+  data: DT_Raster[];
+  pageSize: number;
+}) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
-    []
+    [],
   );
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>(colsVisible);
@@ -186,7 +192,12 @@ export default function DataTableDemo({ data }: { data: DT_Raster[] }) {
       columnVisibility,
       rowSelection,
     },
+    initialState: { pagination: { pageSize: pageSize } },
   });
+
+  React.useEffect(() => {
+    table.setPageSize(pageSize);
+  }, [pageSize, table]);
 
   return (
     <div className="w-full font-base text-mtext">
@@ -238,7 +249,7 @@ export default function DataTableDemo({ data }: { data: DT_Raster[] }) {
                         ? null
                         : flexRender(
                             header.column.columnDef.header,
-                            header.getContext()
+                            header.getContext(),
                           )}
                     </TableHead>
                   );
@@ -257,7 +268,7 @@ export default function DataTableDemo({ data }: { data: DT_Raster[] }) {
                     <TableCell key={cell.id}>
                       {flexRender(
                         cell.column.columnDef.cell,
-                        cell.getContext()
+                        cell.getContext(),
                       )}
                     </TableCell>
                   ))}
