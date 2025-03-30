@@ -115,9 +115,13 @@ export default function RasterSearchForm() {
     await handleSearch(values);
   }
 
-  function handleLoadMore() {
-    handleSearch(form.getValues());
-  }
+  // function handleLoadMore() {
+  //   handleSearch(form.getValues());
+  // }
+
+  const handleLoadMore = async () => {
+    await handleSearch(form.getValues());
+  };
 
   // {
   //   console.log(results);
@@ -258,6 +262,8 @@ export default function RasterSearchForm() {
             <DataTableDemo
               data={results}
               pageSize={form.getValues().maxResults}
+              onLoadMore={handleLoadMore}
+              hasMoreResults={hasMoreResults}
             />
           </CardContent>
         </Card>
