@@ -1,7 +1,7 @@
 "use client";
 
-import { DT_Raster, dtRasterKeys } from "@/ts/raster";
-
+import * as React from "react";
+import { DT_Raster } from "@/ts/raster";
 import {
   ColumnDef,
   ColumnFiltersState,
@@ -14,22 +14,15 @@ import {
   useReactTable,
   VisibilityState,
 } from "@tanstack/react-table";
-import { ArrowUpDown, ChevronDown, MoreHorizontal } from "lucide-react";
-
-import * as React from "react";
-
-import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import {
   Table,
@@ -39,6 +32,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { ArrowUpDown, ChevronDown } from "lucide-react";
 
 export const makeSortableColumn = (
   colName: keyof DT_Raster,
@@ -95,7 +89,7 @@ const columns: ColumnDef<DT_Raster>[] = [
   makeSortableColumn("uwi", "uwi"),
   makeSortableColumn("well_state", "state"),
   makeSortableColumn("well_county", "county"),
-  makeSortableColumn("calib_segment_name", "curves"),
+  makeSortableColumn("calib_segment_name", "calib_segment_name"),
   makeSortableColumn("calib_segment_top_depth", "top"),
   makeSortableColumn("calib_segment_base_depth", "base"),
 
@@ -128,44 +122,20 @@ const columns: ColumnDef<DT_Raster>[] = [
   makeSortableColumn("raster_file_name", "raster"),
   makeSortableColumn("calib_vault_fs_path", "calib_path"),
   makeSortableColumn("raster_vault_fs_path", "raster_path"),
-
-  // {
-  //   id: "actions",
-  //   enableHiding: false,
-  //   cell: ({ row }) => {
-  //     const r = row.original;
-
-  //     return (
-  //       <DropdownMenu>
-  //         <DropdownMenuTrigger asChild>
-  //           <Button variant="noShadow" className="h-8 w-8 p-0">
-  //             <span className="sr-only">Open menu</span>
-  //             <MoreHorizontal className="h-4 w-4" />
-  //           </Button>
-  //         </DropdownMenuTrigger>
-  //         <DropdownMenuContent align="end">
-  //           <DropdownMenuLabel>Actions</DropdownMenuLabel>
-  //           <DropdownMenuItem
-  //             onClick={() => navigator.clipboard.writeText(r.sk)}
-  //           >
-  //             Copy payment ID
-  //           </DropdownMenuItem>
-  //           <DropdownMenuSeparator />
-  //           <DropdownMenuItem>View customer</DropdownMenuItem>
-  //           <DropdownMenuItem>View payment details</DropdownMenuItem>
-  //         </DropdownMenuContent>
-  //       </DropdownMenu>
-  //     );
-  //   },
-  // },
 ];
+
+//////////////////////////////////////////////////////////////////////////
 
 export default function DataTableDemo({
   data,
   pageSize,
+  onLoadMore,
+  hasMoreResults,
 }: {
   data: DT_Raster[];
   pageSize: number;
+  onLoadMore: () => void;
+  hasMoreResults: boolean;
 }) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
@@ -174,6 +144,7 @@ export default function DataTableDemo({
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>(colsVisible);
   const [rowSelection, setRowSelection] = React.useState({});
+  const [globalFilter, setGlobalFilter] = React.useState<string>("");
 
   const table = useReactTable({
     data,
@@ -186,11 +157,19 @@ export default function DataTableDemo({
     getFilteredRowModel: getFilteredRowModel(),
     onColumnVisibilityChange: setColumnVisibility,
     onRowSelectionChange: setRowSelection,
+    onGlobalFilterChange: setGlobalFilter,
+    globalFilterFn: "includesString",
+    //debugTable: true,
+    getColumnCanGlobalFilter: (column) => {
+      // Exclude columns with potentially null values from global filtering
+      return column.id !== "columnWithNullValues";
+    },
     state: {
       sorting,
-      columnFilters,
+      globalFilter,
       columnVisibility,
       rowSelection,
+      columnFilters,
     },
     initialState: { pagination: { pageSize: pageSize } },
   });
@@ -202,14 +181,22 @@ export default function DataTableDemo({
   return (
     <div className="w-full font-base text-mtext">
       <div className="flex items-center py-4">
-        <Input
+        {/* <Input
           placeholder="Filter uwis..."
           value={(table.getColumn("uwi")?.getFilterValue() as string) ?? ""}
           onChange={(event) =>
             table.getColumn("uwi")?.setFilterValue(event.target.value)
           }
           className="max-w-sm"
+        /> */}
+        <Input
+          placeholder="Filter all columns..."
+          value={globalFilter ?? ""}
+          onChange={(e) => table.setGlobalFilter(String(e.target.value))}
+          className="max-w-sm"
         />
+
+        <div className="flex items-center py-4"></div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="noShadow" className="ml-auto">
@@ -293,6 +280,17 @@ export default function DataTableDemo({
           {table.getFilteredRowModel().rows.length} row(s) selected.
         </div>
         <div className="space-x-2">
+          {hasMoreResults && (
+            <Button
+              variant="noShadow"
+              size="sm"
+              onClick={onLoadMore}
+              disabled={!hasMoreResults}
+            >
+              Load More
+            </Button>
+          )}
+
           <Button
             variant="noShadow"
             size="sm"
