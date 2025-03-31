@@ -1,9 +1,11 @@
 "use client";
 import React, { useState } from "react";
+import { cn } from "@/lib/utils";
+
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { cn } from "@/lib/utils";
+
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -19,7 +21,6 @@ import {
   CardFooter,
   CardHeader,
   CardContent,
-  //CardDescription,
   CardTitle,
 } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -30,26 +31,23 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { ChevronsUpDown } from "lucide-react";
+
+import { DT_Raster } from "@/ts/raster";
 import PaginationManager from "../_api/pagination";
 import { searchRasters } from "../_api/dyna_client";
-//import { formatRasterSearchResults } from "@/lib/purr_utils";
-
-import DataTableDemo from "./data-table";
-import { Label } from "@/components/ui/label";
+import RasterDataTable from "./data-table";
 
 export default function RasterSearchForm() {
-  const [results, setResults] = useState<any[]>([]);
+  const [results, setResults] = useState<DT_Raster[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [hasMoreResults, setHasMoreResults] = useState<boolean>(true);
   const [isPopoverOpen, setIsPopoverOpen] = React.useState(false);
-  // const [paginationToken, setPaginationToken] = useState<string | null>(null);
-  //
   const [currentMaxResults, setCurrentMaxResults] = useState(10);
 
   const pm = React.useRef<PaginationManager>(new PaginationManager());
 
-  const maxResultsOptions = [2, 4, 7, 50];
+  const maxResultsOptions = [5, 10, 50, 100];
 
   const formSchema = z.object({
     maxResults: z.number(),
@@ -74,32 +72,20 @@ export default function RasterSearchForm() {
 
     try {
       const response = await searchRasters({
-        maxResults: values.maxResults,
+        //maxResults: values.maxResults,
+        maxResults: currentMaxResults,
         uwis: parseUwiInput(values.uwiList),
         wordz: values.wordz || null,
         paginationToken: pm.current.currentToken, // Send raw token
       });
 
-      // Always replace results on initial search
-      // if (!pm.currentToken) {
-      //   setResults(response.data);
-      // } else {
-      //   setResults((prev) => [...prev, ...response.data]);
-      // }
       setResults((prev) =>
         pm.current.currentToken ? [...prev, ...response.data] : response.data,
       );
 
-      // Directly store the API's token without modification
       pm.current.currentToken = response.metadata?.paginationToken || null;
-      setHasMoreResults(!!pm.current.currentToken);
-
-      // Debug logs
-      // console.log("Current token:", pm.current.currentToken);
-      // console.log(
-      //   "Response data:",
-      //   response.data.map((x) => x.raster_file_name)
-      // );
+      //setHasMoreResults(!!pm.current.currentToken);
+      setHasMoreResults(!!pm.current.currentToken && response.data.length > 0);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Search failed");
     } finally {
@@ -111,21 +97,15 @@ export default function RasterSearchForm() {
     setCurrentMaxResults(values.maxResults);
     pm.current.currentToken = null;
     setResults([]);
-    setHasMoreResults(true);
+    //setHasMoreResults(true);
+    setHasMoreResults(false);
     await handleSearch(values);
   }
-
-  // function handleLoadMore() {
-  //   handleSearch(form.getValues());
-  // }
 
   const handleLoadMore = async () => {
     await handleSearch(form.getValues());
   };
 
-  // {
-  //   console.log(results);
-  // }
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-4 md:flex-row md:gap-8">
@@ -256,12 +236,12 @@ export default function RasterSearchForm() {
           </Form>
         </Card>
 
-        {/* <Card className="flex-1 overflow-y-auto brute-white brute-shadow grid-paper"> */}
         <Card className="flex-1 brute-white brute-shadow grid-paper">
           <CardContent>
-            <DataTableDemo
+            <RasterDataTable
               data={results}
-              pageSize={form.getValues().maxResults}
+              //pageSize={form.getValues().maxResults}
+              pageSize={currentMaxResults}
               onLoadMore={handleLoadMore}
               hasMoreResults={hasMoreResults}
             />

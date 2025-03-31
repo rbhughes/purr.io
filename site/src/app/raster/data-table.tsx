@@ -32,7 +32,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ArrowUpDown, ChevronDown } from "lucide-react";
+import { ArrowUpDown, ChevronDown, Download } from "lucide-react";
 
 export const makeSortableColumn = (
   colName: keyof DT_Raster,
@@ -126,7 +126,7 @@ const columns: ColumnDef<DT_Raster>[] = [
 
 //////////////////////////////////////////////////////////////////////////
 
-export default function DataTableDemo({
+export default function RasterDataTable({
   data,
   pageSize,
   onLoadMore,
@@ -161,7 +161,6 @@ export default function DataTableDemo({
     globalFilterFn: "includesString",
     //debugTable: true,
     getColumnCanGlobalFilter: (column) => {
-      // Exclude columns with potentially null values from global filtering
       return column.id !== "columnWithNullValues";
     },
     state: {
@@ -178,17 +177,13 @@ export default function DataTableDemo({
     table.setPageSize(pageSize);
   }, [pageSize, table]);
 
+  if (data.length === 0) {
+    return <div>no data. maybe show dynamodb stats</div>;
+  }
+
   return (
     <div className="w-full font-base text-mtext">
       <div className="flex items-center py-4">
-        {/* <Input
-          placeholder="Filter uwis..."
-          value={(table.getColumn("uwi")?.getFilterValue() as string) ?? ""}
-          onChange={(event) =>
-            table.getColumn("uwi")?.setFilterValue(event.target.value)
-          }
-          className="max-w-sm"
-        /> */}
         <Input
           placeholder="Filter all columns..."
           value={globalFilter ?? ""}
@@ -279,8 +274,9 @@ export default function DataTableDemo({
           {table.getFilteredSelectedRowModel().rows.length} of{" "}
           {table.getFilteredRowModel().rows.length} row(s) selected.
         </div>
+
         <div className="space-x-2">
-          {hasMoreResults && (
+          {data.length > 0 && hasMoreResults && (
             <Button
               variant="noShadow"
               size="sm"
@@ -309,6 +305,18 @@ export default function DataTableDemo({
           </Button>
         </div>
       </div>
+      {table.getFilteredSelectedRowModel().rows.length > 0 && (
+        <Button
+          className="brute-shadow"
+          onClick={() => {
+            const selectedRows = table.getSelectedRowModel().rows;
+            console.log(selectedRows);
+          }}
+        >
+          <Download />
+          Select for Loading
+        </Button>
+      )}
     </div>
   );
 }
