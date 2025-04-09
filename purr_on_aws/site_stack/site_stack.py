@@ -24,7 +24,8 @@ purr_site_bucket_name = f"{purr_subdomain}-site-{aws_account}"
 
 
 class SiteStack(Stack):
-    def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
+    # def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
+    def __init__(self, scope: Construct, construct_id: str, waf_acl_arn: str, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
         purr_local_dist = "../site/dist"
@@ -65,6 +66,7 @@ class SiteStack(Stack):
         distribution = cloudfront.Distribution(
             self,
             "CloudFrontDistribution",
+            web_acl_id=waf_acl_arn,
             default_behavior=cloudfront.BehaviorOptions(
                 origin=origins.S3BucketOrigin(bucket),
                 viewer_protocol_policy=cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
@@ -84,6 +86,7 @@ class SiteStack(Stack):
         s3_deployment.BucketDeployment(
             self,
             "DeployWebsite",
+            memory_limit=1024,
             sources=[
                 s3_deployment.Source.asset(purr_local_dist, exclude=[".DS_Store"])
             ],
