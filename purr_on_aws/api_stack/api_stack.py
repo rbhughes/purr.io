@@ -10,15 +10,17 @@ from aws_cdk import (
     RemovalPolicy,
     CfnOutput,
 )
+# from aws_cdk.aws_lambda import Function
 from constructs import Construct
 
 load_dotenv()
 
-purr_domain = os.getenv("PURR_DOMAIN")
-purr_subdomain = os.getenv("PURR_SUBDOMAIN")
-aws_account = os.getenv("AWS_ACCOUNT")
-purr_dynamodb_table_name = f"{purr_subdomain}-table-{aws_account}"
-purr_api_lambda_name = f"{purr_subdomain}-api-lambda-{aws_account}"
+purr_domain = os.getenv("PURR_DOMAIN", "purr.io")
+purr_subdomain = os.getenv("PURR_SUBDOMAIN", "test")
+# aws_account = os.getenv("AWS_ACCOUNT", "")
+purr_fizz_table_name = f"{purr_subdomain}-fizz"
+purr_jobs_table_name = f"{purr_subdomain}-jobs"
+purr_api_lambda_name = f"{purr_subdomain}-api-lambda"
 
 
 class ApiStack(Stack):
@@ -48,17 +50,17 @@ class ApiStack(Stack):
 
         auth_handler.add_to_role_policy(logging_policy)
 
-        # Set auth_handler lambda as authorizer for API
+        # Set auth_handler lambda as authorizer for API. (suppress type error)
         authorizer = apigw.TokenAuthorizer(
             self,
             "ApiAuthorizer",
-            handler=auth_handler,
+            handler=auth_handler, # type: ignore
             identity_source="method.request.header.Authorization",
             results_cache_ttl=Duration.minutes(5),
         )
 
-        # Create DynamoDB table. (GSIs are created later)
-        table = dynamodb.Table(
+        # Create DynamoDB fizz table. (GSIs are created later)
+        fizz_table = dynamodb.Table(
             self,
             "FizzTable",
             partition_key=dynamodb.Attribute(
@@ -66,8 +68,22 @@ class ApiStack(Stack):
             ),
             sort_key=dynamodb.Attribute(name="sk", type=dynamodb.AttributeType.STRING),
             billing_mode=dynamodb.BillingMode.PAY_PER_REQUEST,
-            table_name=purr_dynamodb_table_name,
+            table_name=purr_fizz_table_name,
             removal_policy=RemovalPolicy.DESTROY,
+        )
+
+        # Create DynamoDB jobs table.
+        jobs_table = dynamodb.Table(
+            self,
+            "JobsTable",
+            partition_key=dynamodb.Attribute(
+                name="id", type=dynamodb.AttributeType.STRING
+            ),
+            billing_mode=dynamodb.BillingMode.PAY_PER_REQUEST,
+            table_name=purr_jobs_table_name,
+            removal_policy=RemovalPolicy.DESTROY,
+            time_to_live_attribute="ttl",
+            stream=dynamodb.StreamViewType.NEW_IMAGE
         )
 
         # Create Lambda API + DynamoDB handler function
@@ -78,7 +94,7 @@ class ApiStack(Stack):
             code=_lambda.Code.from_asset("lambda"),
             handler="dynamodb_handler.handler",
             environment={
-                "TABLE_NAME": table.table_name,
+                "TABLE_NAME": fizz_table.table_name,
                 "PURR_SUBDOMAIN": purr_subdomain,
                 "PURR_DOMAIN": purr_domain,
             },
@@ -99,9 +115,9 @@ class ApiStack(Stack):
                 "dynamodb:BatchWriteItem",
             ],
             resources=[
-                table.table_arn,
-                f"{table.table_arn}/index/pk-uwi-index",
-                f"{table.table_arn}/index/pk-calib-index",
+                fizz_table.table_arn,
+                f"{fizz_table.table_arn}/index/pk-uwi-index",
+                f"{fizz_table.table_arn}/index/pk-calib-index",
             ],
         )
 
@@ -133,7 +149,7 @@ class ApiStack(Stack):
 
         # Set lambda handler for API Gateway (proxy=True for CORS)
         integration = apigw.LambdaIntegration(
-            api_handler,
+            api_handler, #type: ignore
             proxy=True,
             integration_responses=[
                 {
@@ -184,7 +200,19 @@ class ApiStack(Stack):
         )
         CfnOutput(
             self,
-            "TableName",
-            value=table.table_name,
-            description="DynamoDB table name",
+            "FizzTableName",
+            value=fizz_table.table_name,
+            description="DynamoDB fizz table name",
+        )
+        CfnOutput(
+            self,
+            "JobsTableName",
+            value=jobs_table.table_name,
+            description="DynamoDB jobs table name",
+        )
+        CfnOutput(
+            self,
+            "JobsTableStreamArn",
+            value=jobs_table.table_stream_arn or "unknown",
+            description="DynamoDB jobs table dynamodb stream",
         )

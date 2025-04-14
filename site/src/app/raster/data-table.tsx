@@ -34,6 +34,8 @@ import {
 } from "@/components/ui/table";
 import { ArrowUpDown, ChevronDown, Download } from "lucide-react";
 
+import { AsyncJobButton } from "./async-job-button";
+
 export const makeSortableColumn = (
   colName: keyof DT_Raster,
   colHeader: string,
@@ -306,16 +308,25 @@ export default function RasterDataTable({
         </div>
       </div>
       {table.getFilteredSelectedRowModel().rows.length > 0 && (
-        <Button
-          className="brute-shadow"
-          onClick={() => {
-            const selectedRows = table.getSelectedRowModel().rows;
-            console.log(selectedRows);
-          }}
-        >
-          <Download />
-          Select for Loading
-        </Button>
+        <>
+          <Button
+            className="brute-shadow"
+            onClick={() => {
+              const selectedRows = table.getSelectedRowModel().rows;
+              console.log(selectedRows);
+            }}
+          >
+            <Download />
+            Select for Loading
+          </Button>
+          <AsyncJobButton
+            selectedRows={table.getSelectedRowModel().rows}
+            onJobComplete={(result) => {
+              // Handle completion logic
+              table.toggleAllRowsSelected(false);
+            }}
+          />
+        </>
       )}
     </div>
   );

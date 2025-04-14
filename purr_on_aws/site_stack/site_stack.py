@@ -12,15 +12,21 @@ from aws_cdk import (
     aws_s3_deployment as s3_deployment,
     RemovalPolicy,
 )
+from aws_cdk.aws_cloudfront import CfnDistribution
+from aws_cdk.aws_iam import IPrincipal
+
 from constructs import Construct
+
+from typing import cast
+
 
 load_dotenv()
 
-purr_domain = os.getenv("PURR_DOMAIN")
-purr_subdomain = os.getenv("PURR_SUBDOMAIN")
-purr_cert_arn = os.getenv("PURR_CERT_ARN")
-aws_account = os.getenv("AWS_ACCOUNT")
-purr_site_bucket_name = f"{purr_subdomain}-site-{aws_account}"
+purr_domain = os.getenv("PURR_DOMAIN", "purr.io")
+purr_subdomain = os.getenv("PURR_SUBDOMAIN", "")
+purr_cert_arn = os.getenv("PURR_CERT_ARN", "")
+# aws_account = os.getenv("AWS_ACCOUNT", "")
+purr_site_bucket_name = f"{purr_subdomain}-site"
 
 
 class SiteStack(Stack):
@@ -68,7 +74,7 @@ class SiteStack(Stack):
             "CloudFrontDistribution",
             web_acl_id=waf_acl_arn,
             default_behavior=cloudfront.BehaviorOptions(
-                origin=origins.S3BucketOrigin(bucket),
+                origin=origins.S3BucketOrigin.with_origin_access_control(bucket),
                 viewer_protocol_policy=cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
             ),
             default_root_object="index.html",
@@ -77,7 +83,11 @@ class SiteStack(Stack):
         )
 
         # Associate the OAC with the CloudFront distribution
-        cfn_distribution = distribution.node.default_child
+        # (with some nonsense cast to avoid Pyright lint error)
+        # cfn_distribution: distribution.node.default_child
+        cfn_distribution = cast(CfnDistribution, distribution.node.default_child)
+        assert hasattr(cfn_distribution, "add_property_override"), "Invalid resource type"
+
         cfn_distribution.add_property_override(
             "DistributionConfig.Origins.0.OriginAccessControlId", oac.attr_id
         )
@@ -96,11 +106,17 @@ class SiteStack(Stack):
             distribution_paths=["/*"],
         )
 
+        # Cast ServicePrincipal to IPrincipal
+        # (nonsense cast to satisfy Pyright linting)
+        cloudfront_principal = cast(IPrincipal, iam.ServicePrincipal("cloudfront.amazonaws.com"))
+        principals=[cloudfront_principal]
+
         # Grant CloudFront access to the S3 bucket
         bucket_policy = iam.PolicyStatement(
             actions=["s3:GetObject"],
             resources=[bucket.arn_for_objects("*")],
-            principals=[iam.ServicePrincipal("cloudfront.amazonaws.com")],
+            # principals=[iam.ServicePrincipal("cloudfront.amazonaws.com")],
+            principals=principals
         )
         bucket_policy.add_condition(
             "StringEquals",
@@ -119,6 +135,7 @@ class SiteStack(Stack):
         # )
 
         # Define A record for subdomain, e.g. "stuff.purr.io"
+        # with nonsense type ignore
         hosted_zone = route53.HostedZone.from_lookup(
             self, "HostedZone", domain_name=purr_domain
         )
@@ -127,7 +144,7 @@ class SiteStack(Stack):
             "AliasRecord",
             zone=hosted_zone,
             target=route53.RecordTarget.from_alias(
-                route53_targets.CloudFrontTarget(distribution)
+                route53_targets.CloudFrontTarget(distribution) # type: ignore
             ),
             record_name=f"{purr_subdomain}.{purr_domain}",
         )

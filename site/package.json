@@ -9,6 +9,8 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.788.0",
+    "@aws-sdk/lib-dynamodb": "^3.788.0",
     "@hookform/resolvers": "^4.1.0",
     "@icons-pack/react-simple-icons": "^11.2.0",
     "@radix-ui/react-aspect-ratio": "^1.1.2",

@@ -6,7 +6,7 @@ from botocore.exceptions import ClientError
 
 load_dotenv()
 
-aws_account = os.getenv("AWS_ACCOUNT")
+# aws_account = os.getenv("AWS_ACCOUNT")
 purr_subdomain = os.getenv("PURR_SUBDOMAIN")
 
 
@@ -84,7 +84,7 @@ def safe_create_gsi(table_name, index_name, partition_key, sort_key):
 # 2025-02-23 | modified to hard-code and shorten index name
 def add_dynamodb_indexes():
     gsi_data = {
-        "table": f"{purr_subdomain}-table-{aws_account}",
+        "table": f"{purr_subdomain}-fizz",
         "indices": [
             ("pk", "uwi", "pk-uwi-index"),
             # ("pk", "calib_log_description_lc", "pk-calib-index"),

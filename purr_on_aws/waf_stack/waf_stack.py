@@ -2,7 +2,6 @@ from aws_cdk import (
     Stack,
     aws_wafv2 as wafv2,
     aws_ssm as ssm,
-    CfnOutput,
     RemovalPolicy
 )
 from constructs import Construct
@@ -68,10 +67,10 @@ class WafStack(Stack):
         )
         waf_param.apply_removal_policy(RemovalPolicy.DESTROY)
 
-        # Output for cross-stack reference
-        CfnOutput(
-            self,
-            "WafAclArnOutput",
-            value=self.waf_acl.attr_arn,
-            export_name="WafAclArn"
-        )
+        # # Output for cross-stack reference
+        # CfnOutput(
+        #     self,
+        #     "WafAclArnOutput",
+        #     value=self.waf_acl.attr_arn,
+        #     export_name="WafAclArn"
+        # )

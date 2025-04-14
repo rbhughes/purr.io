@@ -9,9 +9,9 @@ from waf_stack.waf_stack import WafStack
 
 load_dotenv()
 
-aws_account = os.getenv("AWS_ACCOUNT")
-aws_region = os.getenv("AWS_REGION")
-purr_subdomain = os.getenv("PURR_SUBDOMAIN")
+aws_account = os.getenv("AWS_ACCOUNT", "")
+aws_region = os.getenv("AWS_REGION", "")
+purr_subdomain = os.getenv("PURR_SUBDOMAIN", "")
 
 cdk_env = Environment(account=aws_account, region=aws_region)
 waf_env = Environment(account=aws_account, region="us-east-1")

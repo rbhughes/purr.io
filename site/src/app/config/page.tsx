@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useId } from "react";
 //import { getRepos } from "../_utils/apiHelpers";
 import { getRepos } from "../_api/dyna_client";
 
@@ -10,6 +10,8 @@ function RepoList() {
   const [repos, setRepos] = React.useState<Repo[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
+
+  const id = useId();
 
   React.useEffect(() => {
     const fetchRepos = async () => {
@@ -43,6 +45,10 @@ function RepoList() {
           </li>
         ))}
       </ul>
+
+      <h1>ID</h1>
+      <p>{id}</p>
+      <p>{process.env.NEXT_PUBLIC_UNIQUE_ID}</p>
     </div>
   );
 }
