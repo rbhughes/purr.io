@@ -14,18 +14,19 @@ ALLOWED_ORIGINS = {
     f"https://{os.environ['PURR_SUBDOMAIN']}.{os.environ['PURR_DOMAIN']}",
 }
 
-VALID_RESOURCES = {"repo", "raster", "vector", "search"}
+VALID_RESOURCES = {"repo", "raster", "vector", "search", "job"}
 
-# DynamoDB setup
 dynamodb = boto3.resource("dynamodb")
-table = dynamodb.Table(os.environ["TABLE_NAME"])
+
+fizz_table = dynamodb.Table(os.environ["FIZZ_TABLE_NAME"])  # type: ignore
+jobs_table = dynamodb.Table(os.environ["JOBS_TABLE_NAME"])  # type: ignore
 
 
 class DecimalEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, Decimal):
-            return int(obj) if obj % 1 == 0 else float(obj)
-        return super().default(obj)
+    def default(self, o):
+        if isinstance(o, Decimal):
+            return int(o) if o % 1 == 0 else float(o)
+        return super().default(o)
 
     @classmethod
     def prepare_for_dynamodb(cls, data):
@@ -101,7 +102,7 @@ def handle_search(event, body):
             query_args = build_query_args(
                 uwi_prefix, wordz, max_results - len(all_items), exclusive_start_key
             )
-            response = table.query(**query_args)
+            response = fizz_table.query(**query_args)
             all_items.extend(response.get("Items", []))
             last_evaluated_key = response.get("LastEvaluatedKey")
             if not last_evaluated_key:
@@ -156,7 +157,7 @@ def build_query_args(uwi_prefix, wordz, max_results, exclusive_start_key):
 def handle_create(event, body, resource_type):
     if not isinstance(body, list):
         raise ValueError("Request body must be an array")
-    with table.batch_writer() as batch:
+    with fizz_table.batch_writer() as batch:
         for item in body:
             now = datetime.now(timezone.utc).isoformat()
             processed_item = DecimalEncoder.prepare_for_dynamodb(
@@ -176,36 +177,118 @@ def handle_create(event, body, resource_type):
 
 def handle_get(event, resource_type):
     if resource_type == "repo":
-        response = table.query(KeyConditionExpression=Key("pk").eq("REPO"))
+        response = fizz_table.query(KeyConditionExpression=Key("pk").eq("REPO"))
     elif resource_type == "raster":
-        response = table.query(KeyConditionExpression=Key("pk").eq("RASTER"))
+        response = fizz_table.query(KeyConditionExpression=Key("pk").eq("RASTER"))
     else:
-        response = table.query(
+        response = fizz_table.query(
             KeyConditionExpression="begins_with(pk, :resource_prefix)",
             ExpressionAttributeValues={":resource_prefix": f"{resource_type.upper()}#"},
         )
     return create_response(event, 200, response["Items"])
 
 
+###
+
+
+def handle_create_job(event, body):
+    if not isinstance(body, dict):
+        raise ValueError("Job data must be a single object")
+
+    if "ttl" not in body:
+        raise ValueError("TTL attribute is required")
+
+    processed_item = DecimalEncoder.prepare_for_dynamodb(
+        {
+            **body,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }
+    )
+
+    jobs_table.put_item(Item=processed_item)
+
+    return create_response(
+        event,
+        201,
+        {
+            "message": "Job created successfully",
+            "jobId": processed_item["id"],
+            "ttl": processed_item["ttl"],
+        },
+    )
+
+
+def handle_get_job(event):
+    job_id = event.get("pathParameters", {}).get("id")
+    if not job_id:
+        raise ValueError("Job ID required in path parameters")
+
+    response = jobs_table.get_item(
+        Key={"id": job_id},
+        ConsistentRead=True,  # Strong consistency
+    )
+
+    if "Item" not in response:
+        return create_response(event, 404, {"error": "Job not found"})
+
+    return create_response(event, 200, response["Item"])
+
+
+###
+
+# def handler(event, context):
+#     try:
+#         http_method = event["httpMethod"]
+#         resource_type = get_resource_type(event)
+#         if not is_valid_resource(resource_type):
+#             return create_response(event, 400, {"error": "Invalid resource type"})
+#         if http_method == "POST":
+#             body = parse_body(event)
+#             if resource_type == "search":
+#                 return handle_search(event, body)
+#             else:
+#                 return handle_create(event, body, resource_type)
+#         elif http_method == "GET":
+#             return handle_get(event, resource_type)
+#         else:
+#             return create_response(event, 405, {"error": "Method not allowed"})
+#     except ValueError as ve:
+#         print(ve)
+#         return create_response(event, 400, {"error": str(ve)})
+#     except Exception as e:
+#         print(e)
+#         return create_response(event, 500, {"error": str(e)})
+
+
 def handler(event, context):
     try:
         http_method = event["httpMethod"]
         resource_type = get_resource_type(event)
+
         if not is_valid_resource(resource_type):
             return create_response(event, 400, {"error": "Invalid resource type"})
+
         if http_method == "POST":
             body = parse_body(event)
-            if resource_type == "search":
+
+            if resource_type == "job":
+                return handle_create_job(event, body)
+            elif resource_type == "search":  # Explicit search handling
                 return handle_search(event, body)
             else:
                 return handle_create(event, body, resource_type)
+
         elif http_method == "GET":
-            return handle_get(event, resource_type)
+            if resource_type == "job":
+                return handle_get_job(event)
+            else:
+                return handle_get(event, resource_type)
+
         else:
             return create_response(event, 405, {"error": "Method not allowed"})
+
     except ValueError as ve:
-        print(ve)
         return create_response(event, 400, {"error": str(ve)})
     except Exception as e:
-        print(e)
         return create_response(event, 500, {"error": str(e)})

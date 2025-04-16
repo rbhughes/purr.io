@@ -94,7 +94,8 @@ class ApiStack(Stack):
             code=_lambda.Code.from_asset("lambda"),
             handler="dynamodb_handler.handler",
             environment={
-                "TABLE_NAME": fizz_table.table_name,
+                "FIZZ_TABLE_NAME": fizz_table.table_name,
+                "JOBS_TABLE_NAME": jobs_table.table_name,
                 "PURR_SUBDOMAIN": purr_subdomain,
                 "PURR_DOMAIN": purr_domain,
             },
