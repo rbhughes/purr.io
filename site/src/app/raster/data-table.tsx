@@ -16,6 +16,7 @@ import {
 } from "@tanstack/react-table";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -32,9 +33,18 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ArrowUpDown, ChevronDown, Download } from "lucide-react";
+import { ArrowUpDown, ChevronDown } from "lucide-react";
 
-//import { AsyncJobButton } from "./async-job-button";
+import { AsyncJobButton } from "./async-job-button";
+
+const extractPaths = (rows: any) => {
+  const rasters: DT_Raster[] = rows.map((x: any) => x.original);
+  return rasters.map((item) => ({
+    uwi: item.uwi,
+    calib_vault_fs_path: item.calib_vault_fs_path,
+    raster_vault_fs_path: item.raster_vault_fs_path,
+  }));
+};
 
 export const makeSortableColumn = (
   colName: keyof DT_Raster,
@@ -60,9 +70,16 @@ const colsVisible: VisibilityState = {
   well_state: false,
   well_county: false,
   well_name: false,
+  raster_checksum: false,
   raster_vault_fs_path: false,
+  calib_checksum: false,
   calib_vault_fs_path: false,
+  has_checksums: false,
 };
+
+function checksumFilterFn(row) {
+  return !!row.original.raster_checksum && !!row.original.calib_checksum;
+}
 
 const columns: ColumnDef<DT_Raster>[] = [
   {
@@ -124,6 +141,17 @@ const columns: ColumnDef<DT_Raster>[] = [
   makeSortableColumn("raster_file_name", "raster"),
   makeSortableColumn("calib_vault_fs_path", "calib_path"),
   makeSortableColumn("raster_vault_fs_path", "raster_path"),
+  ///
+  {
+    id: "has_checksums",
+    accessorFn: (row) => row, // Pass the whole row
+    header: "has_checksums",
+    filterFn: checksumFilterFn,
+    enableColumnFilter: false, // Hide from UI
+    enableSorting: false,
+    enableHiding: false,
+  },
+  ///
 ];
 
 //////////////////////////////////////////////////////////////////////////
@@ -147,6 +175,10 @@ export default function RasterDataTable({
     React.useState<VisibilityState>(colsVisible);
   const [rowSelection, setRowSelection] = React.useState({});
   const [globalFilter, setGlobalFilter] = React.useState<string>("");
+  ///
+  const [requireChecksums, setRequireChecksums] = React.useState(false);
+
+  ///
 
   const table = useReactTable({
     data,
@@ -173,11 +205,30 @@ export default function RasterDataTable({
       columnFilters,
     },
     initialState: { pagination: { pageSize: pageSize } },
+    filterFns: {
+      checksumFilterFn,
+    },
   });
 
   React.useEffect(() => {
     table.setPageSize(pageSize);
   }, [pageSize, table]);
+
+  ///
+  React.useEffect(() => {
+    if (requireChecksums) {
+      table.setColumnFilters((prev) => [
+        ...prev.filter((f) => f.id !== "has_checksums"),
+        { id: "has_checksums", value: true },
+      ]);
+    } else {
+      // Remove the custom filter
+      table.setColumnFilters((prev) =>
+        prev.filter((f) => f.id !== "has_checksums"),
+      );
+    }
+  }, [requireChecksums, table]);
+  ///
 
   if (data.length === 0) {
     return <div>no data. maybe show dynamodb stats</div>;
@@ -192,6 +243,15 @@ export default function RasterDataTable({
           onChange={(e) => table.setGlobalFilter(String(e.target.value))}
           className="max-w-sm"
         />
+
+        <div className="flex items-center ml-4 space-x-2">
+          <Switch
+            id="checksumz"
+            checked={requireChecksums}
+            onCheckedChange={setRequireChecksums}
+          />
+          <Label htmlFor="checksumz">Raster/Calib Pairs Only</Label>
+        </div>
 
         <div className="flex items-center py-4"></div>
         <DropdownMenu>
@@ -309,7 +369,7 @@ export default function RasterDataTable({
       </div>
       {table.getFilteredSelectedRowModel().rows.length > 0 && (
         <>
-          <Button
+          {/* <Button
             className="brute-shadow"
             onClick={() => {
               const selectedRows = table.getSelectedRowModel().rows;
@@ -318,14 +378,18 @@ export default function RasterDataTable({
           >
             <Download />
             Select for Loading
-          </Button>
-          {/* <AsyncJobButton
-            selectedRows={table.getSelectedRowModel().rows}
+          </Button> */}
+          <AsyncJobButton
+            // selectedRows={table.getSelectedRowModel().rows}
+            selectedRows={extractPaths(table.getSelectedRowModel().rows)}
             onJobComplete={(result) => {
               // Handle completion logic
+              console.log("_____result of asyncbutton in data_table");
+              console.log(result);
+              console.log("_____result of asyncbutton in data_table");
               table.toggleAllRowsSelected(false);
             }}
-          /> */}
+          />
         </>
       )}
     </div>

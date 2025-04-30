@@ -2,9 +2,12 @@ import json
 import boto3
 import os
 import base64
+import uuid
 from decimal import Decimal
 from datetime import datetime, timezone
 from boto3.dynamodb.conditions import Key
+from botocore.exceptions import ClientError
+
 
 # Constants
 MAX_RESULTS = 500
@@ -60,9 +63,25 @@ def create_response(event, status_code, body, extra_headers=None):
     }
 
 
+# def get_resource_type(event):
+#     resource_path = event["path"].split("/")
+#     return resource_path[-1].lower().rstrip("s")
+
+
 def get_resource_type(event):
-    resource_path = event["path"].split("/")
-    return resource_path[-1].lower().rstrip("s")
+    # Remove stage prefix if present
+    path = event["path"]
+    # Remove leading slash and split
+    parts = path.lstrip("/").split("/")
+    # Find the resource part (after stage, e.g., 'prod')
+    if parts[0] in {"prod", "dev", "test"}:  # or dynamically get stage name
+        parts = parts[1:]
+    # If path is /jobs/123, parts = ['jobs', '123']
+    if len(parts) >= 2 and parts[0] == "jobs" and parts[1]:
+        return "job"
+    elif len(parts) >= 1:
+        return parts[0].rstrip("s")
+    return ""
 
 
 def is_valid_resource(resource_type):
@@ -191,32 +210,126 @@ def handle_get(event, resource_type):
 ###
 
 
-def handle_create_job(event, body):
+def handle_job(event, body):
     if not isinstance(body, dict):
         raise ValueError("Job data must be a single object")
 
     if "ttl" not in body:
         raise ValueError("TTL attribute is required")
 
-    processed_item = DecimalEncoder.prepare_for_dynamodb(
-        {
-            **body,
-            "created_at": datetime.now(timezone.utc).isoformat(),
-            "updated_at": datetime.now(timezone.utc).isoformat(),
-        }
-    )
+    current_time = datetime.now(timezone.utc).isoformat()
+    is_update = "id" in body and body["id"]
 
-    jobs_table.put_item(Item=processed_item)
+    if is_update:
+        # Update existing job
+        job_id = body["id"]
 
-    return create_response(
-        event,
-        201,
-        {
-            "message": "Job created successfully",
-            "jobId": processed_item["id"],
-            "ttl": processed_item["ttl"],
-        },
-    )
+        # Prepare update data
+        update_data = body.copy()
+        del update_data["id"]  # Remove ID as it's part of the key
+        update_data["updated_at"] = current_time
+
+        # Convert to DynamoDB format
+        update_data = DecimalEncoder.prepare_for_dynamodb(update_data)
+
+        # Build update expression
+        update_parts = []
+        expr_names = {}
+        expr_values = {}
+
+        for key, value in update_data.items():
+            update_parts.append(f"#{key} = :{key}")
+            expr_names[f"#{key}"] = key
+            expr_values[f":{key}"] = value
+
+        update_expression = "SET " + ", ".join(update_parts)
+
+        try:
+            # Perform update using update_item
+            response = jobs_table.update_item(
+                Key={"id": job_id},
+                UpdateExpression=update_expression,
+                ExpressionAttributeNames=expr_names,
+                ExpressionAttributeValues=expr_values,
+                ReturnValues="UPDATED_NEW",
+            )
+
+            return create_response(
+                event,
+                200,
+                {
+                    "message": "Job updated successfully",
+                    "id": job_id,
+                    "ttl": body["ttl"],
+                },
+            )
+        except ClientError as err:
+            # Handle errors
+            print(
+                f"Couldn't update job {job_id}. Here's why: {err.response['Error']['Code']}: {err.response['Error']['Message']}"
+            )
+            raise
+    else:
+        # Create new job
+        if "id" not in body or not body["id"]:
+            body["id"] = str(uuid.uuid4())
+
+        processed_item = DecimalEncoder.prepare_for_dynamodb(
+            {
+                **body,
+                "created_at": current_time,
+                "updated_at": current_time,
+            }
+        )
+
+        try:
+            # Create new item using put_item
+            jobs_table.put_item(Item=processed_item)
+
+            return create_response(
+                event,
+                201,
+                {
+                    "message": "Job created successfully",
+                    "id": processed_item["id"],
+                    "ttl": processed_item["ttl"],
+                },
+            )
+        except ClientError as err:
+            # Handle errors
+            print(
+                f"Couldn't create job. Here's why: {err.response['Error']['Code']}: {err.response['Error']['Message']}"
+            )
+            raise
+
+
+# def handle_job(event, body):
+#     if not isinstance(body, dict):
+#         raise ValueError("Job data must be a single object")
+
+#     if "ttl" not in body:
+#         raise ValueError("TTL attribute is required")
+
+
+#     processed_item = DecimalEncoder.prepare_for_dynamodb(
+#         {
+#             **body,
+#             "created_at": datetime.now(timezone.utc).isoformat(),
+#             "updated_at": datetime.now(timezone.utc).isoformat(),
+#         }
+#     )
+
+#     jobs_table.put_item(Item=processed_item)
+
+#     return create_response(
+#         event,
+#         201,
+#         {
+#             "message": "Job created successfully",
+#             "jobId": processed_item["id"],
+#             "ttl": processed_item["ttl"],
+#         },
+#     )
 
 
 def handle_get_job(event):
@@ -273,7 +386,7 @@ def handler(event, context):
             body = parse_body(event)
 
             if resource_type == "job":
-                return handle_create_job(event, body)
+                return handle_job(event, body)
             elif resource_type == "search":  # Explicit search handling
                 return handle_search(event, body)
             else:

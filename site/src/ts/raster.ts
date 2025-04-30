@@ -67,6 +67,7 @@ export interface Raster {
 export interface DT_Raster {
   sk: string;
   uwi: string;
+  calib_checksum?: string;
   calib_file_name?: string;
   calib_log_depth_type?: string;
   calib_log_depth_unit?: string;
@@ -75,6 +76,7 @@ export interface DT_Raster {
   calib_segment_top_depth?: number;
   calib_type?: string;
   calib_vault_fs_path?: string;
+  raster_checksum?: string;
   raster_file_name?: string;
   raster_vault_fs_path?: string;
   well_county?: string;
@@ -85,6 +87,7 @@ export interface DT_Raster {
 export const dtRasterKeys: Array<keyof DT_Raster> = [
   "sk",
   "uwi",
+  "calib_checksum",
   "calib_file_name",
   "calib_log_depth_type",
   "calib_log_depth_unit",
@@ -93,6 +96,7 @@ export const dtRasterKeys: Array<keyof DT_Raster> = [
   "calib_segment_top_depth",
   "calib_type",
   "calib_vault_fs_path",
+  "raster_checksum",
   "raster_file_name",
   "raster_vault_fs_path",
   "well_county",

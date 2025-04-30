@@ -10,6 +10,7 @@ from aws_cdk import (
     RemovalPolicy,
     CfnOutput,
 )
+
 # from aws_cdk.aws_lambda import Function
 from constructs import Construct
 
@@ -54,7 +55,7 @@ class ApiStack(Stack):
         authorizer = apigw.TokenAuthorizer(
             self,
             "ApiAuthorizer",
-            handler=auth_handler, # type: ignore
+            handler=auth_handler,  # type: ignore
             identity_source="method.request.header.Authorization",
             results_cache_ttl=Duration.minutes(5),
         )
@@ -83,7 +84,7 @@ class ApiStack(Stack):
             table_name=purr_jobs_table_name,
             removal_policy=RemovalPolicy.DESTROY,
             time_to_live_attribute="ttl",
-            stream=dynamodb.StreamViewType.NEW_IMAGE
+            stream=dynamodb.StreamViewType.NEW_IMAGE,
         )
 
         # Create Lambda API + DynamoDB handler function
@@ -117,8 +118,9 @@ class ApiStack(Stack):
             ],
             resources=[
                 fizz_table.table_arn,
+                jobs_table.table_arn,
                 f"{fizz_table.table_arn}/index/pk-uwi-index",
-                f"{fizz_table.table_arn}/index/pk-calib-index",
+                # f"{fizz_table.table_arn}/index/pk-calib-index",
             ],
         )
 
@@ -150,7 +152,7 @@ class ApiStack(Stack):
 
         # Set lambda handler for API Gateway (proxy=True for CORS)
         integration = apigw.LambdaIntegration(
-            api_handler, #type: ignore
+            api_handler,  # type: ignore
             proxy=True,
             integration_responses=[
                 {
@@ -162,9 +164,6 @@ class ApiStack(Stack):
             ],
         )
 
-        # Add resources and methods for all resource endpoints
-        resources = ["repos", "rasters", "vectors", "search"]
-
         method_response = {
             "statusCode": "200",
             "responseParameters": {
@@ -172,24 +171,86 @@ class ApiStack(Stack):
             },
         }
 
-        for resource in resources:
-            api_resource = api.root.add_resource(resource)
+        # Add resources and methods for all resource endpoints
+        # resources = ["repos", "rasters", "vectors", "search", "jobs"]
 
-            if resource != "search":
-                api_resource.add_method(
-                    "GET",
-                    integration=integration,
-                    authorizer=authorizer,
-                    authorization_type=apigw.AuthorizationType.CUSTOM,
-                    method_responses=[method_response],
-                )
-            api_resource.add_method(
-                "POST",
-                integration=integration,
-                authorizer=authorizer,
-                authorization_type=apigw.AuthorizationType.CUSTOM,
-                method_responses=[method_response],
-            )
+        # GET /repos
+        repos_resource = api.root.add_resource("repos")
+        repos_resource.add_method(
+            "GET",
+            integration=integration,
+            authorizer=authorizer,
+            authorization_type=apigw.AuthorizationType.CUSTOM,
+            method_responses=[method_response],
+        )
+
+        # POST /repos
+        repos_resource.add_method(
+            "POST",
+            integration=integration,
+            authorizer=authorizer,
+            authorization_type=apigw.AuthorizationType.CUSTOM,
+            method_responses=[method_response],
+        )
+
+        # POST /rasters
+        rasters_resource = api.root.add_resource("rasters")
+        rasters_resource.add_method(
+            "POST",
+            integration=integration,
+            authorizer=authorizer,
+            authorization_type=apigw.AuthorizationType.CUSTOM,
+            method_responses=[method_response],
+        )
+
+        # POST /search
+        search_resource = api.root.add_resource("search")
+        search_resource.add_method(
+            "POST",
+            integration=integration,
+            authorizer=authorizer,
+            authorization_type=apigw.AuthorizationType.CUSTOM,
+            method_responses=[method_response],
+        )
+
+        # POST /jobs
+        jobs_resource = api.root.add_resource("jobs")
+        jobs_resource.add_method(
+            "POST",
+            integration=integration,
+            authorizer=authorizer,
+            authorization_type=apigw.AuthorizationType.CUSTOM,
+            method_responses=[method_response],
+        )
+
+        # GET /jobs/{id}
+        job_id_resource = jobs_resource.add_resource("{id}")
+        job_id_resource.add_method(
+            "GET",
+            integration=integration,
+            authorizer=authorizer,
+            authorization_type=apigw.AuthorizationType.CUSTOM,
+            method_responses=[method_response],
+        )
+
+        # for resource in resources:
+        #     api_resource = api.root.add_resource(resource)
+
+        #     if resource != "search":
+        #         api_resource.add_method(
+        #             "GET",
+        #             integration=integration,
+        #             authorizer=authorizer,
+        #             authorization_type=apigw.AuthorizationType.CUSTOM,
+        #             method_responses=[method_response],
+        #         )
+        #     api_resource.add_method(
+        #         "POST",
+        #         integration=integration,
+        #         authorizer=authorizer,
+        #         authorization_type=apigw.AuthorizationType.CUSTOM,
+        #         method_responses=[method_response],
+        #     )
 
         ######################################################################
 

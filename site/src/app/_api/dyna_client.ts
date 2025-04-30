@@ -1,10 +1,13 @@
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 import { Repo } from "@/ts/repo";
+import { Job } from "@/ts/job";
 import { Raster, DT_Raster, dtRasterKeys } from "@/ts/raster";
 
 const ENDPOINTS = {
   GET_REPOS: "/repos",
   SEARCH_RASTERS: "/search",
+  CREATE_JOB: "jobs",
+  GET_JOB_BY_ID: (id: string) => `/jobs/${id}`,
 };
 
 type HttpMethod = "GET" | "POST" | "DELETE";
@@ -48,7 +51,7 @@ interface FilteredRasterResponse {
 // }
 
 function filterRasterResponse(
-  response: FullRasterResponse
+  response: FullRasterResponse,
 ): FilteredRasterResponse {
   const filteredData = response.data.map((item) => {
     const result: DT_Raster = {} as DT_Raster;
@@ -76,7 +79,7 @@ const client = {
   request: async <T, D = unknown>(
     endpoint: string,
     method: HttpMethod,
-    data?: D
+    data?: D,
   ): Promise<ApiResponse<T>> => {
     const options: RequestInit = {
       method,
@@ -111,6 +114,26 @@ export const getRepos = async (): Promise<Repo[]> => {
   }
 };
 
+export const createJob = async (job: Job): Promise<ApiResponse<Job>> => {
+  try {
+    const response = await client.post<Job>(ENDPOINTS.CREATE_JOB, job);
+    return response;
+  } catch (error) {
+    console.error("Error creating job:", error);
+    throw error;
+  }
+};
+
+export const getJobById = async (id: string): Promise<ApiResponse<Job>> => {
+  try {
+    const response = await client.get<Job>(ENDPOINTS.GET_JOB_BY_ID(id));
+    return response;
+  } catch (error) {
+    console.error("Error fetching job by ID:", error);
+    throw error;
+  }
+};
+
 export interface RepoSearchParams {
   maxResults: number;
   uwis: string[];
@@ -119,7 +142,7 @@ export interface RepoSearchParams {
 }
 
 export const searchRasters = async (
-  params: RepoSearchParams
+  params: RepoSearchParams,
 ): Promise<FilteredRasterResponse> => {
   try {
     const payload = {
@@ -129,7 +152,7 @@ export const searchRasters = async (
 
     const response = await client.post<FullRasterResponse>(
       ENDPOINTS.SEARCH_RASTERS,
-      payload
+      payload,
     );
 
     console.log("$$$$$$$$$$$$$$$$$$");
