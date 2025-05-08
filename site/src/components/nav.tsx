@@ -26,12 +26,8 @@ export default function Nav() {
       text: "About",
     },
     {
-      path: "/work",
-      text: "Work",
-    },
-    {
-      path: "/config",
-      text: "Config",
+      path: "/control",
+      text: "Control",
     },
   ];
 
@@ -46,7 +42,7 @@ export default function Nav() {
                 "hover:border-border dark:hover:border-darkBorder rounded-base border-2 px-2 py-1 transition-colors",
                 path === link.path
                   ? "border-border dark:border-darkBorder"
-                  : "border-transparent"
+                  : "border-transparent",
               )}
               href={link.path}
             >

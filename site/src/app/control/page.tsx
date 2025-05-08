@@ -6,6 +6,8 @@ import { getRepos } from "../_api/dyna_client";
 
 import { Repo } from "@/ts/repo";
 
+import { AsyncJobButton } from "@/components/async-job-button";
+
 function RepoList() {
   const [repos, setRepos] = React.useState<Repo[]>([]);
   const [loading, setLoading] = React.useState(true);
@@ -49,6 +51,7 @@ function RepoList() {
       <h1>ID</h1>
       <p>{id}</p>
       <p>{process.env.NEXT_PUBLIC_UNIQUE_ID}</p>
+      {/* <AsyncJobButton /> */}
     </div>
   );
 }
@@ -56,7 +59,7 @@ function RepoList() {
 export default function Config() {
   return (
     <div className="font-base">
-      <h1 className="mb-8 text-2xl font-heading sm:text-4xl">Configuration</h1>
+      <h1 className="mb-8 text-2xl font-heading sm:text-4xl">Controls</h1>
 
       <div className="mb-10 text-base sm:text-lg">
         <p>

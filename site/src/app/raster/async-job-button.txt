@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useInterval } from "@/hooks/use-interval";
 import { Button } from "@/components/ui/button";
-import { createJob, getJobById } from "../_api/dyna_client"; // Adjust import paths as needed
+import { createJob, getJobById } from "../_api/dyna_client";
 import { Job } from "@/ts/job";
 import { Download } from "lucide-react";
 //import { v4 as uuidv4 } from "uuid";

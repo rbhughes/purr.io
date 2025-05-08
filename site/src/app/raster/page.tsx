@@ -8,6 +8,7 @@ export default function Raster() {
     <div className="font-base">
       {/* <RasterSearch /> */}
       <RasterSearchForm />
+      {/* <RasterSearchForm /> */}
     </div>
   );
 }

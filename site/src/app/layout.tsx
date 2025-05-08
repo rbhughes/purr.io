@@ -12,6 +12,8 @@ import Nav from "@/components/nav";
 import { ViewTransitions } from "next-view-transitions";
 import { ThemeProvider } from "@/components/theme-provider";
 
+import { Toaster } from "@/components/ui/sonner";
+
 // const purr_font = Montserrat({ subsets: ["latin"] });
 const purr_font = Noto_Sans_Display({ subsets: ["latin"] });
 // const purr_font = Ubuntu_Mono({ weight: "400" });
@@ -40,6 +42,7 @@ export default function RootLayout({
             {/* <div className="text-text dark:text-darkText mx-auto w-[1400px] max-w-full px-5 pb-10 pt-28"> */}
             <div className="text-text dark:text-darkText mx-auto w-[94%] max-w-full px-4 pb-10 pt-28">
               {children}
+              <Toaster />
             </div>
           </ThemeProvider>
         </body>

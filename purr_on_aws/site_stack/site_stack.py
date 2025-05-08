@@ -1,42 +1,41 @@
 import os
-from dotenv import load_dotenv
-from aws_cdk import (
-    Stack,
-    aws_s3 as s3,
-    aws_cloudfront as cloudfront,
-    aws_cloudfront_origins as origins,
-    aws_iam as iam,
-    aws_certificatemanager as acm,
-    aws_route53 as route53,
-    aws_route53_targets as route53_targets,
-    aws_s3_deployment as s3_deployment,
-    RemovalPolicy,
-)
-from aws_cdk.aws_cloudfront import CfnDistribution
-from aws_cdk.aws_iam import IPrincipal
-
-from constructs import Construct
-
 from typing import cast
 
+from aws_cdk import RemovalPolicy, Stack
+from aws_cdk import aws_certificatemanager as acm
+from aws_cdk import aws_cloudfront as cloudfront
+from aws_cdk import aws_cloudfront_origins as origins
+from aws_cdk import aws_iam as iam
+from aws_cdk import aws_lambda as lambda_
+from aws_cdk import aws_route53 as route53
+from aws_cdk import aws_route53_targets as route53_targets
+from aws_cdk import aws_s3 as s3
+from aws_cdk import aws_s3_deployment as s3_deployment
+from aws_cdk.aws_cloudfront import CfnDistribution
+from aws_cdk.aws_iam import IPrincipal
+from constructs import Construct
+from dotenv import load_dotenv
 
 load_dotenv()
 
 purr_domain = os.getenv("PURR_DOMAIN", "purr.io")
 purr_subdomain = os.getenv("PURR_SUBDOMAIN", "")
 purr_cert_arn = os.getenv("PURR_CERT_ARN", "")
-# aws_account = os.getenv("AWS_ACCOUNT", "")
 purr_site_bucket_name = f"{purr_subdomain}-site"
 
 
 class SiteStack(Stack):
-    # def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
-    def __init__(self, scope: Construct, construct_id: str, waf_acl_arn: str, **kwargs) -> None:
+    def __init__(
+        self,
+        scope: Construct,
+        construct_id: str,
+        lambda_edge_arn: str,
+        **kwargs,
+    ) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
         purr_local_dist = "../site/dist"
 
-        ###
         # NOTE: assumes you already have a valid certificate
         certificate = acm.Certificate.from_certificate_arn(
             self, "ExistingCertificate", purr_cert_arn
@@ -69,14 +68,24 @@ class SiteStack(Stack):
         )
 
         # Create a CloudFront distribution using S3BucketOrigin
+        default_behavior_kwargs = {
+            "origin": origins.S3BucketOrigin.with_origin_access_control(bucket),
+            "viewer_protocol_policy": cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+            "edge_lambdas": [
+                cloudfront.EdgeLambda(
+                    function_version=lambda_.Version.from_version_arn(
+                        self, "ImportedLambdaEdge", lambda_edge_arn
+                    ),
+                    event_type=cloudfront.LambdaEdgeEventType.VIEWER_REQUEST,
+                )
+            ],
+        }
+
+        # Create a CloudFront distribution using S3BucketOrigin
         distribution = cloudfront.Distribution(
             self,
             "CloudFrontDistribution",
-            web_acl_id=waf_acl_arn,
-            default_behavior=cloudfront.BehaviorOptions(
-                origin=origins.S3BucketOrigin.with_origin_access_control(bucket),
-                viewer_protocol_policy=cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
-            ),
+            default_behavior=default_behavior_kwargs,
             default_root_object="index.html",
             domain_names=[f"{purr_subdomain}.{purr_domain}"],
             certificate=certificate,
@@ -86,7 +95,9 @@ class SiteStack(Stack):
         # (with some nonsense cast to avoid Pyright lint error)
         # cfn_distribution: distribution.node.default_child
         cfn_distribution = cast(CfnDistribution, distribution.node.default_child)
-        assert hasattr(cfn_distribution, "add_property_override"), "Invalid resource type"
+        assert hasattr(cfn_distribution, "add_property_override"), (
+            "Invalid resource type"
+        )
 
         cfn_distribution.add_property_override(
             "DistributionConfig.Origins.0.OriginAccessControlId", oac.attr_id
@@ -108,15 +119,16 @@ class SiteStack(Stack):
 
         # Cast ServicePrincipal to IPrincipal
         # (nonsense cast to satisfy Pyright linting)
-        cloudfront_principal = cast(IPrincipal, iam.ServicePrincipal("cloudfront.amazonaws.com"))
-        principals=[cloudfront_principal]
+        cloudfront_principal = cast(
+            IPrincipal, iam.ServicePrincipal("cloudfront.amazonaws.com")
+        )
+        principals = [cloudfront_principal]
 
         # Grant CloudFront access to the S3 bucket
         bucket_policy = iam.PolicyStatement(
             actions=["s3:GetObject"],
             resources=[bucket.arn_for_objects("*")],
-            # principals=[iam.ServicePrincipal("cloudfront.amazonaws.com")],
-            principals=principals
+            principals=principals,
         )
         bucket_policy.add_condition(
             "StringEquals",
@@ -144,7 +156,7 @@ class SiteStack(Stack):
             "AliasRecord",
             zone=hosted_zone,
             target=route53.RecordTarget.from_alias(
-                route53_targets.CloudFrontTarget(distribution) # type: ignore
+                route53_targets.CloudFrontTarget(distribution)  # type: ignore
             ),
             record_name=f"{purr_subdomain}.{purr_domain}",
         )

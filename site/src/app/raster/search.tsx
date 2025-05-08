@@ -35,7 +35,7 @@ import { ChevronsUpDown } from "lucide-react";
 import { DT_Raster } from "@/ts/raster";
 import PaginationManager from "../_api/pagination";
 import { searchRasters } from "../_api/dyna_client";
-import RasterDataTable from "./data-table";
+import SearchResults from "./search-results";
 
 export default function RasterSearchForm() {
   const [results, setResults] = useState<DT_Raster[]>([]);
@@ -106,6 +106,15 @@ export default function RasterSearchForm() {
     await handleSearch(form.getValues());
   };
 
+  // Resets react-hook-form fields to defaultValues; reset pagination token
+  const handleReset = () => {
+    form.reset();
+    setResults([]);
+    setError(null);
+    pm.current.currentToken = null;
+    setHasMoreResults(true);
+  };
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-4 md:flex-row md:gap-8">
@@ -133,8 +142,7 @@ export default function RasterSearchForm() {
                         />
                       </FormControl>
                       <FormDescription>
-                        Separate multiple UWIs or partial UWI-prefixes with
-                        commas
+                        Enter UWI(s) or partial UWI-prefixes with commas
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -217,8 +225,9 @@ export default function RasterSearchForm() {
                 />
                 <div>
                   <Button
+                    type="button"
                     variant="neutral"
-                    // className="brute-shadow mt-[-6px]"
+                    onClick={handleReset}
                     className="brute-shadow mt-5 mr-4"
                   >
                     Reset
@@ -228,7 +237,7 @@ export default function RasterSearchForm() {
                     type="submit"
                     className="brute-shadow mt-5"
                   >
-                    Submit
+                    Search
                   </Button>
                 </div>
               </CardFooter>
@@ -236,20 +245,27 @@ export default function RasterSearchForm() {
           </Form>
         </Card>
 
-        <Card className="flex-1 brute-white brute-shadow grid-paper">
+        <SearchResults
+          results={results}
+          pageSize={currentMaxResults}
+          isLoading={isLoading}
+          error={error}
+          hasMoreResults={hasMoreResults}
+          onLoadMore={handleLoadMore}
+        />
+        {/* <Card className="flex-1 min-w-0 brute-white brute-shadow grid-paper">
           <CardContent>
             <RasterDataTable
               data={results}
-              //pageSize={form.getValues().maxResults}
               pageSize={currentMaxResults}
               onLoadMore={handleLoadMore}
               hasMoreResults={hasMoreResults}
             />
           </CardContent>
-        </Card>
+        </Card> */}
       </div>
 
-      <div className="w-full max-w-[90%] mt-8">
+      {/* <div className="w-full max-w-[90%] mt-8">
         {isLoading && (
           <div className="p-4 bg-yellow-100 mb-4">Loading results...</div>
         )}
@@ -257,9 +273,9 @@ export default function RasterSearchForm() {
         {error && (
           <div className="p-4 text-red-500 bg-red-100 mb-4">{error}</div>
         )}
-      </div>
+      </div> */}
 
-      <div className="flex-1 bg-blue-200 p-4">
+      {/* <div className="flex-1 bg-blue-200 p-4">
         Bottom Tray (Will hold selected table items) I will hold stats until
         search happens
         {results.length > 0 && (
@@ -284,7 +300,7 @@ export default function RasterSearchForm() {
             )}
           </div>
         )}
-      </div>
+      </div> */}
     </div>
   );
 }

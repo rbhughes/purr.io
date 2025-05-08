@@ -3,4 +3,5 @@ export interface Job {
   ttl: number;
   directive: string;
   status: string;
+  body?: string;
 }

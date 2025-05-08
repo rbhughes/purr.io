@@ -35,7 +35,9 @@ import {
 } from "@/components/ui/table";
 import { ArrowUpDown, ChevronDown } from "lucide-react";
 
-import { AsyncJobButton } from "./async-job-button";
+import { toast } from "sonner";
+
+import { AsyncJobButton } from "@/components/async-job-button";
 
 const extractPaths = (rows: any) => {
   const rasters: DT_Raster[] = rows.map((x: any) => x.original);
@@ -369,24 +371,15 @@ export default function RasterDataTable({
       </div>
       {table.getFilteredSelectedRowModel().rows.length > 0 && (
         <>
-          {/* <Button
-            className="brute-shadow"
-            onClick={() => {
-              const selectedRows = table.getSelectedRowModel().rows;
-              console.log(selectedRows);
-            }}
-          >
-            <Download />
-            Select for Loading
-          </Button> */}
           <AsyncJobButton
             // selectedRows={table.getSelectedRowModel().rows}
             selectedRows={extractPaths(table.getSelectedRowModel().rows)}
             onJobComplete={(result) => {
               // Handle completion logic
               console.log("_____result of asyncbutton in data_table");
-              console.log(result);
+              console.log(result.body);
               console.log("_____result of asyncbutton in data_table");
+              toast.success(result.body);
               table.toggleAllRowsSelected(false);
             }}
           />
