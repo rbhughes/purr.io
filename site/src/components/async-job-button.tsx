@@ -3,7 +3,6 @@ import { useInterval } from "@/hooks/use-interval";
 import { Button } from "@/components/ui/button";
 import { createJob, getJobById } from "@/app/_api/dyna_client";
 //import { Job } from "@/ts/job";
-import { Download } from "lucide-react";
 //import { v4 as uuidv4 } from "uuid";
 
 const getTTL = () => {
@@ -13,13 +12,19 @@ const getTTL = () => {
 
 const POLL_SEC = 2;
 
-export const AsyncJobButton = ({
-  selectedRows,
-  onJobComplete,
-}: {
-  selectedRows: any[];
+type AsyncJobButtonProps = {
+  icon?: React.ElementType;
+  title: string;
+  payloadItems: any[];
   onJobComplete: (result: any) => void;
-}) => {
+};
+
+export const AsyncJobButton = ({
+  icon: Icon,
+  title,
+  payloadItems,
+  onJobComplete,
+}: AsyncJobButtonProps) => {
   const [isPending, setIsPending] = useState(false);
   const [jobId, setJobId] = useState<string | null>(null);
   const [pollCount, setPollCount] = useState(0);
@@ -30,7 +35,7 @@ export const AsyncJobButton = ({
     try {
       const payload = {
         ttl: getTTL(),
-        rows: selectedRows,
+        items: payloadItems,
         directive: "zip_and_show",
         status: "pending",
       };
@@ -74,10 +79,10 @@ export const AsyncJobButton = ({
     <Button
       className="brute-shadow"
       onClick={startAsyncJob}
-      disabled={isPending || selectedRows.length === 0}
+      disabled={isPending || payloadItems.length === 0}
     >
-      <Download />
-      {isPending ? "Pending..." : "Select for Loading"}
+      {Icon && <Icon className="mr-2 h-4 w-4" />}
+      {isPending ? "Pending..." : title}
     </Button>
   );
 };

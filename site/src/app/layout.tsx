@@ -42,7 +42,7 @@ export default function RootLayout({
             {/* <div className="text-text dark:text-darkText mx-auto w-[1400px] max-w-full px-5 pb-10 pt-28"> */}
             <div className="text-text dark:text-darkText mx-auto w-[94%] max-w-full px-4 pb-10 pt-28">
               {children}
-              <Toaster />
+              <Toaster duration={10000} />
             </div>
           </ThemeProvider>
         </body>

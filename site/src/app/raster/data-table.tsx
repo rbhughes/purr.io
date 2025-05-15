@@ -33,7 +33,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ArrowUpDown, ChevronDown } from "lucide-react";
+import { ArrowUpDown, ChevronDown, Download } from "lucide-react";
 
 import { toast } from "sonner";
 
@@ -372,14 +372,16 @@ export default function RasterDataTable({
       {table.getFilteredSelectedRowModel().rows.length > 0 && (
         <>
           <AsyncJobButton
-            // selectedRows={table.getSelectedRowModel().rows}
-            selectedRows={extractPaths(table.getSelectedRowModel().rows)}
+            icon={Download}
+            title={"Select for Loading"}
+            payloadItems={extractPaths(table.getSelectedRowModel().rows)}
             onJobComplete={(result) => {
               // Handle completion logic
               console.log("_____result of asyncbutton in data_table");
               console.log(result.body);
               console.log("_____result of asyncbutton in data_table");
-              toast.success(result.body);
+              //toast.success(result.body);
+              toast.info(result.body);
               table.toggleAllRowsSelected(false);
             }}
           />

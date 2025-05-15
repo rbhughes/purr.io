@@ -1,7 +1,7 @@
 "use client";
 
 //import RasterSearch from "./search";
-import RasterSearchForm from "./search";
+import RasterSearchForm from "./raster-search";
 
 export default function Raster() {
   return (

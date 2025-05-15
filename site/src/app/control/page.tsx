@@ -1,75 +1,46 @@
 "use client";
+import React from "react";
 
-import React, { useId } from "react";
-//import { getRepos } from "../_utils/apiHelpers";
-import { getRepos } from "../_api/dyna_client";
+import RepoForm from "./repo-form";
+import RepoList from "./repo-list";
 
-import { Repo } from "@/ts/repo";
+import {
+  Card,
+  CardFooter,
+  CardHeader,
+  CardContent,
+  CardTitle,
+} from "@/components/ui/card";
 
-import { AsyncJobButton } from "@/components/async-job-button";
-
-function RepoList() {
-  const [repos, setRepos] = React.useState<Repo[]>([]);
-  const [loading, setLoading] = React.useState(true);
-  const [error, setError] = React.useState<string | null>(null);
-
-  const id = useId();
-
-  React.useEffect(() => {
-    const fetchRepos = async () => {
-      try {
-        const fetchedRepos = await getRepos();
-
-        console.log(fetchedRepos);
-        setRepos(fetchedRepos);
-        setLoading(false);
-      } catch (err) {
-        setError("Failed to fetch repos");
-        console.log(err);
-        setLoading(false);
-      }
-    };
-
-    fetchRepos();
-  }, []);
-
-  if (loading) return <div>Loading...</div>;
-  if (error) return <div>Error: {error}</div>;
-
+export default function Control() {
   return (
-    <div>
-      <h1>Repositories</h1>
-      <ul>
-        {repos.map((repo) => (
-          <li key={repo.id}>
-            <h2>{repo.name}</h2>
-            <p>{repo.fs_path}</p>
-          </li>
-        ))}
-      </ul>
-
-      <h1>ID</h1>
-      <p>{id}</p>
-      <p>{process.env.NEXT_PUBLIC_UNIQUE_ID}</p>
-      {/* <AsyncJobButton /> */}
-    </div>
-  );
-}
-
-export default function Config() {
-  return (
-    <div className="font-base">
-      <h1 className="mb-8 text-2xl font-heading sm:text-4xl">Controls</h1>
-
-      <div className="mb-10 text-base sm:text-lg">
-        <p>
-          Lorem ipsum dolor sit amet consectetur, adipisicing elit. Est
-          consequatur, harum pariatur provident rerum placeat magni voluptas
-          consectetur in exercitationem nobis aut, molestiae iure possimus
-          aspernatur nesciunt laudantium ab atque.
-        </p>
+    <div className="flex flex-col gap-4 font-base">
+      {/* <div className="w-full">
+        <h1 className="mb-8 text-2xl font-heading sm:text-4xl">Controls</h1>
+      </div> */}
+      <div className="w-full"></div>
+      top
+      <div className="flex flex-row gap-4">
+        <Card className="w-[400px] flex-shrink-0 brute-white brute-shadow grid-paper">
+          left
+        </Card>
+        <Card className="flex-1 min-w-0 brute-white brute-shadow grid-paper">
+          right
+        </Card>
       </div>
-      <RepoList />
     </div>
   );
+
+  // return (
+  //   <div className="font-base">
+  //     <h1 className="mb-8 text-2xl font-heading sm:text-4xl">Controls</h1>
+
+  //     <RepoList />
+  //     <RepoForm />
+
+  //     <div className="flex gap-4 bg-red-400">
+
+  //     </div>
+  //   </div>
+  // );
 }
