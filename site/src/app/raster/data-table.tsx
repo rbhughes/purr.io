@@ -374,6 +374,7 @@ export default function RasterDataTable({
           <AsyncJobButton
             icon={Download}
             title={"Select for Loading"}
+            directive="raster_zip_and_show"
             payloadItems={extractPaths(table.getSelectedRowModel().rows)}
             onJobComplete={(result) => {
               // Handle completion logic

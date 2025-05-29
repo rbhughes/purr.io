@@ -6,33 +6,37 @@ import { getRepos } from "../_api/dyna_client";
 
 import { Repo } from "@/ts/repo";
 
-export default function RepoList() {
-  const [repos, setRepos] = React.useState<Repo[]>([]);
+export default function RepoList({ repos }) {
+  //const [repos, setRepos] = React.useState<Repo[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
 
   const id = useId();
 
-  React.useEffect(() => {
-    const fetchRepos = async () => {
-      try {
-        const fetchedRepos = await getRepos();
+  // React.useEffect(() => {
+  //   const fetchRepos = async () => {
+  //     try {
+  //       const fetchedRepos = await getRepos();
 
-        console.log(fetchedRepos);
-        setRepos(fetchedRepos);
-        setLoading(false);
-      } catch (err) {
-        setError("Failed to fetch repos");
-        console.log(err);
-        setLoading(false);
-      }
-    };
+  //       console.log(fetchedRepos);
+  //       setRepos(fetchedRepos);
+  //       setLoading(false);
+  //     } catch (err) {
+  //       setError("Failed to fetch repos");
+  //       console.log(err);
+  //       setLoading(false);
+  //     }
+  //   };
 
-    fetchRepos();
-  }, []);
+  //   fetchRepos();
+  // }, []);
 
-  if (loading) return <div>Loading...</div>;
-  if (error) return <div>Error: {error}</div>;
+  console.log("*&&&&");
+  console.log(repos);
+  console.log("*&&&&");
+
+  //if (loading) return <div>Loading...</div>;
+  //if (error) return <div>Error: {error}</div>;
 
   return (
     <div>

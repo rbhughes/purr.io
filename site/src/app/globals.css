@@ -3,63 +3,63 @@
 @tailwind utilities;
 
 * {
-  padding: 0;
-  margin: 0;
-  box-sizing: border-box;
+    padding: 0;
+    margin: 0;
+    box-sizing: border-box;
 }
 
 body {
-  @apply dark:bg-darkBg bg-bg;
+    @apply dark:bg-darkBg bg-bg;
 }
 
 body {
-  --sb-track-color: #ffffff;
-  --sb-thumb-color: #000000;
+    --sb-track-color: #ffffff;
+    --sb-thumb-color: #000000;
 }
 
 body::-webkit-scrollbar {
-  width: 16px;
+    width: 16px;
 }
 
 body::-webkit-scrollbar-track {
-  background: var(--sb-track-color);
+    background: var(--sb-track-color);
 }
 
 body::-webkit-scrollbar-thumb {
-  background: var(--sb-thumb-color);
+    background: var(--sb-thumb-color);
 }
 
 @supports not selector(::-webkit-scrollbar) {
-  body {
-    scrollbar-color: var(--sb-thumb-color) var(--sb-track-color);
-  }
+    body {
+        scrollbar-color: var(--sb-thumb-color) var(--sb-track-color);
+    }
 }
 
 @media (max-width: 768px) {
-  .flex-container {
-    flex-direction: column;
-  }
+    .flex-container {
+        flex-direction: column;
+    }
 }
 
 .brute-form {
-  @apply bg-bg dark:bg-darkBg
+    @apply bg-bg dark:bg-darkBg
       text-text dark:text-darkText
       selection:text-text dark:selection:text-darkText
       border-border dark:border-darkBorder;
 }
 
 .brute-shadow {
-  @apply shadow-light dark:shadow-dark rounded-base border-2 p-2;
+    @apply shadow-light dark:shadow-dark rounded-base border-2 p-2;
 }
 
 .brute-white {
-  @apply bg-white dark:bg-darkBg
+    @apply bg-white dark:bg-darkBg
       border-border dark:border-darkBorder;
 }
 
 .grid-paper {
-  background-size: 20px 20px;
-  background-image: radial-gradient(circle, #bbb 1px, rgba(0, 0, 0, 0) 1px);
+    background-size: 20px 20px;
+    background-image: radial-gradient(circle, #bbb 1px, rgba(0, 0, 0, 0) 1px);
 }
 
 /* .brute-table tr,
@@ -70,13 +70,13 @@ body::-webkit-scrollbar-thumb {
 } */
 
 .brute-table th {
-  @apply bg-bg;
+    @apply bg-bg;
 }
 
 .brute-table td,
 .brute-table tr {
-  @apply py-1;
-  @apply bg-white dark:bg-darkBg
+    @apply py-1;
+    @apply bg-white dark:bg-darkBg
       border-bg dark:border-darkBorder
       border-b;
 }

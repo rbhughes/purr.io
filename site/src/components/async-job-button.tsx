@@ -15,6 +15,7 @@ const POLL_SEC = 2;
 type AsyncJobButtonProps = {
   icon?: React.ElementType;
   title: string;
+  directive: string;
   payloadItems: any[];
   onJobComplete: (result: any) => void;
 };
@@ -22,6 +23,7 @@ type AsyncJobButtonProps = {
 export const AsyncJobButton = ({
   icon: Icon,
   title,
+  directive,
   payloadItems,
   onJobComplete,
 }: AsyncJobButtonProps) => {
@@ -36,7 +38,7 @@ export const AsyncJobButton = ({
       const payload = {
         ttl: getTTL(),
         items: payloadItems,
-        directive: "zip_and_show",
+        directive: directive,
         status: "pending",
       };
 

@@ -23,6 +23,7 @@ import {
 import { Button } from "@/components/ui/button";
 import {
   Card,
+  CardDescription,
   CardFooter,
   CardHeader,
   CardContent,
@@ -37,7 +38,7 @@ import {
 } from "@/components/ui/popover";
 import { ChevronsUpDown } from "lucide-react";
 
-export default function RepoForm() {
+export default function RepoForm({ onJobComplete }) {
   const [isPopoverOpen, setIsPopoverOpen] = React.useState(false);
 
   const formSchema = z.object({
@@ -51,7 +52,7 @@ export default function RepoForm() {
     resolver: zodResolver(formSchema),
     defaultValues: {
       suite: "Petra",
-      repoPath: "\\\\server\\share\\project",
+      repoPath: "",
     },
   });
 
@@ -70,46 +71,38 @@ export default function RepoForm() {
   }
 
   return (
-    <div className="flex gap-4 bg-red-400">
-      <Card className="  brute-white brute-shadow grid-paper">
-        <Form {...form}>
-          <form
-            onSubmit={form.handleSubmit(onSubmit)}
-            className=" mx-auto w-full"
-          >
-            <CardHeader>
-              <CardTitle>Repos</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-8">
-              <FormField
-                control={form.control}
-                name="suite"
-                render={({ field }) => (
-                  <FormItem className="flex flex-col">
-                    <FormLabel>Application</FormLabel>
-                    <Popover
-                      open={isPopoverOpen}
-                      onOpenChange={setIsPopoverOpen}
-                    >
-                      <PopoverTrigger asChild>
-                        <FormControl>
-                          <Button
-                            variant="noShadow"
-                            role="combobox"
-                            className={cn(
-                              "w-[100px] justify-between",
-                              "brute-form",
-                              !field.value && "text-muted-foreground;",
-                            )}
-                          >
-                            {field.value || "max page results"}
-                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                          </Button>
-                        </FormControl>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-[120px] p-0 bg-white ">
-                        <div className="p-2">
-                          {/* {maxResultsOptions.map((num) => (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className=" mx-auto w-full">
+        <CardHeader>
+          <CardTitle>Repos</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-8">
+          <FormField
+            control={form.control}
+            name="suite"
+            render={({ field }) => (
+              <FormItem className="flex flex-col">
+                <FormLabel>Application</FormLabel>
+                <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
+                  <PopoverTrigger asChild>
+                    <FormControl>
+                      <Button
+                        variant="noShadow"
+                        role="combobox"
+                        className={cn(
+                          "w-[100px] justify-between",
+                          "brute-form",
+                          !field.value && "text-muted-foreground;",
+                        )}
+                      >
+                        {field.value || "max page results"}
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </FormControl>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[120px] p-0 bg-white ">
+                    <div className="p-2">
+                      {/* {maxResultsOptions.map((num) => (
                               <Button
                                 key={num}
                                 variant="neutral"
@@ -123,46 +116,45 @@ export default function RepoForm() {
                                 {num}
                               </Button>
                             ))} */}
-                        </div>
-                      </PopoverContent>
-                    </Popover>
-                    {/* <FormDescription>Limit results per page</FormDescription> */}
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                    </div>
+                  </PopoverContent>
+                </Popover>
+                {/* <FormDescription>Limit results per page</FormDescription> */}
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-              <FormField
-                control={form.control}
-                name="repoPath"
-                render={({ field }) => (
-                  <FormItem className="flex-1">
-                    <FormLabel>Repo path</FormLabel>
-                    <FormControl>
-                      <Input placeholder="" {...field} className="brute-form" />
-                    </FormControl>
-                    <FormDescription>
-                      Full Windows path to repo/project
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </CardContent>
-            <CardFooter className="flex mt-4 justify-between">
-              <div>
-                <AsyncJobButton
-                  icon={FolderPlus}
-                  title={"Add Repo"}
-                  payloadItems={["oneblah"]}
-                  onJobComplete={(res) => console.log(res)}
-                />
-              </div>
-            </CardFooter>
-          </form>
-        </Form>
-      </Card>
-      <Card className="flex-1 min-w-0 brute-white brute-shadow grid-paper"></Card>
-    </div>
+          <FormField
+            control={form.control}
+            name="repoPath"
+            render={({ field }) => (
+              <FormItem className="flex-1">
+                <FormLabel>Repo path</FormLabel>
+                <FormControl>
+                  <Input placeholder="" {...field} className="brute-form" />
+                </FormControl>
+                <FormDescription>
+                  Full Windows path to repo/project
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </CardContent>
+        <CardFooter className="flex mt-4 justify-between">
+          <div>
+            <AsyncJobButton
+              icon={FolderPlus}
+              title={"Add Repo"}
+              directive={"add_petra_repo"}
+              payloadItems={[form.getValues()]}
+              //onJobComplete={(res) => console.log(res)}
+              onJobComplete={onJobComplete}
+            />
+          </div>
+        </CardFooter>
+      </form>
+    </Form>
   );
 }
